@@ -1,0 +1,3 @@
+import {isAllowedOrigin} from '../../../lib/cors';
+import {savePlayer,ProfileError} from '../../../lib/player-server';
+export async function POST(request:Request){if(!isAllowedOrigin(request))return Response.json({error:'Request origin is invalid.'},{status:403});try{const raw=await request.text();if(raw.length>1024)return Response.json({error:'Profile is too large.'},{status:400});const profile=await savePlayer(JSON.parse(raw));return Response.json({ok:true,name:profile.name,icon:profile.icon});}catch(e){return Response.json({error:e instanceof ProfileError?e.message:'Could not sync your profile. Please try again.'},{status:e instanceof ProfileError?e.status:503});}}
