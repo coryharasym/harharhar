@@ -44,7 +44,7 @@ export async function POST(request:Request){
  if(best&&(best.score>score||(best.score===score&&best.moves<=count)))return Response.json({...verified,ok:true,published:best.id===id,rank:findRank(before.results),score:best.score});
  const candidate:RankedScore={id,playerId,name:name.trim(),score,moves:count,created:now};
  if(candidateRank(before.results,candidate)>5)return Response.json({...verified,ok:true,published:false,rank:null,score});
- await db.insert(scores).values({id,name:name.trim(),score,tile,lines,moves:count,created:now,game:run.game,playerId,icon:profile?.icon||'orbit'}).onConflictDoUpdate({target:scores.id,set:{score,tile,lines,moves:count,created:now,playerId,name:name.trim(),icon:profile?.icon||'orbit'},setWhere:sql`${scores.score}<${score} OR (${scores.score}=${score} AND ${scores.moves}>${count}) OR (${scores.playerId} IS NULL AND ${playerId} IS NOT NULL)`});
+ await db.insert(scores).values({id,name:name.trim(),score,tile,lines,moves:count,created:now,game:run.game,playerId,icon:profile?.icon||'orbit'}).onConflictDoUpdate({target:scores.id,set:{score,tile,lines,moves:count,created:now,playerId,icon:profile?.icon||'orbit'},setWhere:sql`${scores.score}<${score} OR (${scores.score}=${score} AND ${scores.moves}>${count}) OR (${scores.playerId} IS NULL AND ${playerId} IS NOT NULL)`});
  const after=await env.DB!.prepare(LEADERBOARD_SQL).bind(run.game,0).all<RankedScore>();
  const rank=findRank(after.results);return Response.json({...verified,ok:true,published:rank!==null,rank,score});
  }catch(e){return Response.json({error:e instanceof ProfileError?e.message:'Your score was not submitted. Your game is saved; please try again.'},{status:e instanceof ProfileError?e.status:503});}
