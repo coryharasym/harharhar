@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {start,slide,move,ended,replay,type Game} from '../lib/game.ts';
+const board=(row:number[])=>[...row,...Array(12).fill(0)];
+test('merges each original tile once',()=>{assert.deepEqual(slide(board([2,2,2,2]),'L'),{board:board([4,4,0,0]),gain:8,changed:true});assert.deepEqual(slide(board([2,2,4,0]),'L').board,board([4,4,0,0]));});
+test('handles right, up and down orientation',()=>{assert.deepEqual(slide(board([2,0,2,4]),'R').board,board([0,0,4,4]));const b=Array(16).fill(0);b[0]=b[4]=2;const up=Array(16).fill(0);up[0]=4;const down=Array(16).fill(0);down[12]=4;assert.deepEqual(slide(b,'U').board,up);assert.deepEqual(slide(b,'D').board,down);});
+test('invalid move preserves object, random state and history',()=>{const g:Game={board:board([2,4,8,16]),score:0,rng:10,moves:''};assert.equal(move(g,'L'),g);});
+test('only valid moves spawn one new tile, do not mutate prior state',()=>{const g:Game={board:board([2,2,0,0]),score:0,rng:10,moves:''};const next=move(g,'L');assert.equal(next.score,4);assert.equal(next.board.filter(Boolean).length,2);assert.equal(next.moves,'L');assert.deepEqual(g.board,board([2,2,0,0]));});
+test('replays deterministic games and rejects forged history',()=>{let g=start(1234);for(const d of 'LURDLURDLURD'){g=move(g,d as 'L');}assert.deepEqual(replay(1234,g.moves),g);assert.throws(()=>replay(1,'XYZ'));const initial=start(42);const invalid=['L','R','U','D'].find(d=>move(initial,d as 'L')===initial);if(invalid)assert.throws(()=>replay(42,invalid));});
+test('detects game over and permits continued play after 2048',()=>{const b=[2,4,2,4,4,2,4,2,2,4,2,4,4,2,4,2];assert.equal(ended({board:b,score:0,rng:1,moves:''}),true);b[0]=4;assert.equal(ended({board:b,score:0,rng:1,moves:''}),false);b[0]=2048;b[1]=0;assert.equal(ended({board:b,score:0,rng:1,moves:''}),false);});
+test('seeds always start with two valid tiles',()=>{for(let i=0;i<100;i++){const g=start(i);assert.equal(g.board.filter(Boolean).length,2);assert.ok(g.board.every(v=>[0,2,4].includes(v)));}});
