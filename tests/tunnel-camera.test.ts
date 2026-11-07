@@ -1,0 +1,6 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {FLIGHT,TAU} from '../lib/tunnel-flight.ts';
+import {configureFlightCamera,shipModel} from '../lib/tunnel-scene.ts';
+test('actual ship vertices stay inside portrait framing around the full orbit in both cameras',()=>{const ship=shipModel();for(const aspect of [320/812,390/844,9/16])for(const mode of ['follow','steady'] as const)for(let turn=0;turn<=48;turn++){const angle=turn/48*TAU;ship.position.set(Math.sin(angle)*FLIGHT.shipRadius,-Math.cos(angle)*FLIGHT.shipRadius,FLIGHT.shipZ);ship.rotation.z=angle;ship.updateMatrixWorld(true);const camera=new THREE.PerspectiveCamera(74,aspect,.1,260);configureFlightCamera(camera,mode==='follow'?angle-.1:angle,mode);camera.updateProjectionMatrix();ship.traverse(object=>{const mesh=object as THREE.Mesh;if(!mesh.geometry||mesh.name==='trail')return;const positions=mesh.geometry.getAttribute('position');for(let i=0;i<positions.count;i++){const point=new THREE.Vector3().fromBufferAttribute(positions,i).applyMatrix4(mesh.matrixWorld).project(camera);assert.ok(Number.isFinite(point.x)&&Number.isFinite(point.y));assert.ok(Math.abs(point.x)<1,`${mode} ship clipped horizontally at ${turn}, aspect ${aspect}: ${point.x}`);assert.ok(Math.abs(point.y)<1,`${mode} ship clipped vertically at ${turn}: ${point.y}`);}});}});
