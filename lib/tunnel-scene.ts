@@ -4,13 +4,44 @@ export type CameraMode='follow'|'steady';
 const polar=(angle:number,radius:number,z:number)=>new THREE.Vector3(Math.sin(angle)*radius,-Math.cos(angle)*radius,z);
 function prism(points:number[][],depth:number){const vertices:number[]=[];const n=points.length;const push=(i:number,z:number)=>vertices.push(points[i][0],points[i][1],z);for(let i=1;i<n-1;i++){push(0,-depth/2);push(i+1,-depth/2);push(i,-depth/2);push(0,depth/2);push(i,depth/2);push(i+1,depth/2);}for(let i=0;i<n;i++){const j=(i+1)%n;push(i,-depth/2);push(j,-depth/2);push(j,depth/2);push(i,-depth/2);push(j,depth/2);push(i,depth/2);}const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.computeVertexNormals();return geometry;}
 function arcGeometry(inner:number,outer:number,start:number,length:number,depth:number){const shape=new THREE.Shape();const point=(angle:number,r:number)=>[Math.sin(angle)*r,-Math.cos(angle)*r];let [x,y]=point(start,outer);shape.moveTo(x,y);const steps=Math.max(3,Math.ceil(length/.09));for(let i=1;i<=steps;i++){[x,y]=point(start+length*i/steps,outer);shape.lineTo(x,y);}for(let i=steps;i>=0;i--){[x,y]=point(start+length*i/steps,inner);shape.lineTo(x,y);}shape.closePath();const geometry=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,steps:1});geometry.translate(0,0,-depth/2);return geometry;}
-export function shipModel(){const group=new THREE.Group();const purple=new THREE.MeshPhongMaterial({color:0x8041cc,specular:0xcbaaff,shininess:65,flatShading:true,side:THREE.DoubleSide}),dark=new THREE.MeshPhongMaterial({color:0x25233f,specular:0x78779f,shininess:55,flatShading:true}),cyan=new THREE.MeshBasicMaterial({color:0x62f9e1}),glass=new THREE.MeshPhongMaterial({color:0x68eee8,emissive:0x14595e,shininess:110});
- // Mesh coordinates use x=wing span, y=height, z=fore/aft; nose faces -z.
- const hull=new THREE.BufferGeometry();hull.setAttribute('position',new THREE.Float32BufferAttribute([0,.22,-1.35,-.42,.05,.72,0,.64,-.12, 0,.22,-1.35,0,.64,-.12,.42,.05,.72, -.42,.05,.72,.42,.05,.72,0,.64,-.12, 0,.22,-1.35,.42,.05,.72,-.42,.05,.72],3));hull.computeVertexNormals();group.add(new THREE.Mesh(hull,purple));
- for(const side of [-1,1]){const wing=prism([[side*.23,-.46],[side*1.35,.84],[side*.38,.62]],.13);wing.rotateX(Math.PI/2);wing.translate(0,-.03,0);group.add(new THREE.Mesh(wing,purple));const edge=new THREE.EdgesGeometry(wing);group.add(new THREE.LineSegments(edge,new THREE.LineBasicMaterial({color:0xa985ed})));const tip=prism([[side*.85,.53],[side*1.35,.84],[side*.56,.69]],.025);tip.rotateX(Math.PI/2);tip.translate(0,.065,0);group.add(new THREE.Mesh(tip,cyan));
- const engine=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.3,12),dark);engine.rotation.x=Math.PI/2;engine.position.set(side*.34,.01,.75);group.add(engine);const exhaust=new THREE.Mesh(new THREE.CircleGeometry(.135,12),cyan);exhaust.position.set(side*.34,.01,.915);group.add(exhaust);
- const trail=new THREE.Mesh(new THREE.ConeGeometry(.13,2.1,10,1,true),new THREE.MeshBasicMaterial({color:0x54e2cb,transparent:true,opacity:.27,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));trail.rotation.x=-Math.PI/2;trail.position.set(side*.34,.01,1.9);trail.name='trail';group.add(trail);}
- const canopy=new THREE.Mesh(new THREE.BoxGeometry(.28,.14,.62),glass);canopy.position.set(0,.49,-.24);canopy.rotation.x=.12;group.add(canopy);return group;}
+export function shipModel(){
+ const group=new THREE.Group();group.name='interceptor';
+ const armor=new THREE.MeshPhongMaterial({color:0x7946cc,specular:0xd8bfff,shininess:95,flatShading:true,side:THREE.DoubleSide});
+ const lightArmor=new THREE.MeshPhongMaterial({color:0xaa83ee,specular:0xefe3ff,shininess:110,flatShading:true,side:THREE.DoubleSide});
+ const dark=new THREE.MeshPhongMaterial({color:0x171e36,specular:0x6d789d,shininess:85,flatShading:true,side:THREE.DoubleSide});
+ const metal=new THREE.MeshPhongMaterial({color:0x535e83,specular:0xc5d2ef,shininess:100,flatShading:true});
+ const cyan=new THREE.MeshBasicMaterial({color:0x66ffe8,toneMapped:false}),core=new THREE.MeshBasicMaterial({color:0xd8fff7,toneMapped:false});
+ const glass=new THREE.MeshPhongMaterial({color:0x123d56,emissive:0x092e3d,specular:0xb7ffff,shininess:140,flatShading:true});
+ const add=(geometry:THREE.BufferGeometry,material:THREE.Material,name:string,x=0,y=0,z=0)=>{const mesh=new THREE.Mesh(geometry,material);mesh.name=name;mesh.position.set(x,y,z);group.add(mesh);return mesh;};
+ const plate=(points:number[][],height:number,thickness:number,material:THREE.Material,name:string)=>{const geo=prism(points,thickness);geo.rotateX(Math.PI/2);return add(geo,material,name,0,height,0);};
+ const loft=(sections:number[][])=>{const positions:number[]=[];const points=sections.map(([z,width,bottom,top])=>Array.from({length:8},(_,i)=>{const a=Math.PI/2+i*TAU/8;return [Math.cos(a)*width,(top+bottom)/2+Math.sin(a)*(top-bottom)/2,z];}));const triangle=(a:number[],b:number[],c:number[])=>positions.push(...a,...b,...c);for(let s=0;s<points.length-1;s++)for(let i=0;i<8;i++){const j=(i+1)%8;triangle(points[s][i],points[s+1][i],points[s+1][j]);triangle(points[s][i],points[s+1][j],points[s][j]);}for(const [s,reverse]of [[0,true],[points.length-1,false]] as const)for(let i=1;i<7;i++)reverse?triangle(points[s][0],points[s][i+1],points[s][i]):triangle(points[s][0],points[s][i],points[s][i+1]);const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geo.computeVertexNormals();return geo;};
+ add(loft([[-1.45,.025,.04,.15],[-.9,.19,-.04,.3],[-.15,.38,-.13,.39],[.65,.43,-.13,.26],[.95,.3,-.08,.17]]),dark,'titanium-keel');
+ add(loft([[-1.4,.018,.12,.2],[-.75,.17,.13,.35],[.08,.32,.12,.42],[.7,.32,.08,.3]]),armor,'faceted-fuselage');
+ add(loft([[-.73,.04,.31,.35],[-.4,.17,.34,.57],[.16,.2,.35,.58],[.4,.13,.29,.4]]),glass,'faceted-cockpit');
+ plate([[0,-1.41],[-.055,-.87],[0,-.71],[.055,-.87]],.29,.025,lightArmor,'nose-cap');
+ plate([[-.045,-.66],[-.035,-.36],[0,-.28],[.035,-.36],[.045,-.66]],.51,.025,cyan,'cockpit-spine');
+ plate([[-.075,.39],[-.08,.83],[.08,.83],[.075,.39]],.33,.06,lightArmor,'dorsal-spine');
+ for(const side of [-1,1]){
+  const mirror=(points:number[][])=>points.map(([x,z])=>[x*side,z]);
+  plate(mirror([[.24,-.56],[1.35,.8],[1.2,.98],[.43,.74]]),-.01,.17,dark,'wing-underframe');
+  plate(mirror([[.28,-.47],[1.29,.78],[1.16,.87],[.48,.66]]),.09,.075,armor,'swept-wing-armor');
+  plate(mirror([[.38,-.25],[1.18,.72],[.91,.65],[.46,.1]]),.15,.035,lightArmor,'wing-leading-bevel');
+  plate(mirror([[.49,.34],[1.13,.79],[.88,.72],[.49,.48]]),.17,.022,dark,'wing-inset-channel');
+  plate(mirror([[.58,.47],[1.12,.8],[1.03,.78],[.58,.53]]),.195,.018,cyan,'wing-navigation-strip');
+  plate(mirror([[1.19,.73],[1.33,.82],[1.21,.93],[1.16,.85]]),.2,.12,lightArmor,'armored-wingtip');
+  plate(mirror([[.31,.24],[.66,.73],[.58,.91],[.33,.71]]),.21,.12,armor,'engine-shoulder');
+  const barrel=add(new THREE.CylinderGeometry(.185,.23,.7,10),dark,'engine-nacelle',side*.47,.015,.67);barrel.rotation.x=Math.PI/2;
+  const collar=add(new THREE.TorusGeometry(.185,.045,5,12),metal,'engine-nozzle-collar',side*.47,.015,1.025);
+  const rim=add(new THREE.TorusGeometry(.14,.026,4,12),cyan,'ion-exhaust-ring',side*.47,.015,1.067);
+  add(new THREE.CircleGeometry(.105,12),core,'ion-core',side*.47,.015,1.075);
+  const trail=add(new THREE.ConeGeometry(.12,1.9,10,1,true),new THREE.MeshBasicMaterial({color:0x54e2cb,transparent:true,opacity:.24,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),'trail',side*.47,.015,2.02);trail.rotation.x=-Math.PI/2;
+  for(let i=0;i<3;i++){const vent=add(new THREE.BoxGeometry(.14,.018,.035),metal,'engine-cooling-vent',side*.47,.24,.48+i*.1);vent.rotation.z=side*-.1;}
+  const fin=add(prism([[side*.28,.23],[side*.31,.63],[side*.51,.23]],.055),armor,'tail-stabilizer',0,0,.73);fin.rotation.y=side*.12;
+  const seam=new THREE.Line(new THREE.BufferGeometry().setFromPoints(mirror([[.22,-.65],[.37,.15],[.34,.72]]).map(([x,z])=>new THREE.Vector3(x,.27,z))),new THREE.LineBasicMaterial({color:0xb89ae8}));seam.name='hull-panel-seam';group.add(seam);
+  collar.renderOrder=1;rim.renderOrder=1;
+ }
+ return group;
+}
 export function configureFlightCamera(camera:THREE.PerspectiveCamera,angle:number,mode:CameraMode){const follow=mode==='follow';camera.position.copy(polar(follow?angle:0,follow?3:0,follow?12:32));camera.up.set(-Math.sin(follow?angle:0),Math.cos(follow?angle:0),0);camera.lookAt(polar(follow?angle:0,follow?6.8:0,-40));camera.updateMatrixWorld(true);}
 export function impactPresentation(state:FlightState,elapsed:number,reduced:boolean){const active=!!state.impactKind&&elapsed<1.1,shield=state.impactKind==='shield',protectedHull=state.hp>0&&state.invulnerableUntil>state.ticks;return {tint:shield?'shield' as const:'hull' as const,strength:active?Math.max(0,1-elapsed/1.1)*(reduced?.75:.65+.35*Math.cos(elapsed*Math.PI*4)):0,opacity:state.hp<=0?Math.max(0,1-elapsed/1.05):protectedHull&&!reduced?.68+.32*Math.cos(elapsed*Math.PI*4):1,ringScale:1+Math.min(1.1,elapsed)*2,ringAlpha:active&&!reduced?Math.max(0,.85*(1-elapsed/1.1)):0};}
 export class TunnelScene{
