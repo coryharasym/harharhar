@@ -53,3 +53,8 @@ footer.tunnel-bottom{display:block;height:auto;min-height:0;max-width:none;margi
 @media(max-width:600px){.neon-card-art{width:210px;height:210px;right:-55px;top:120px;opacity:.6}.neon-feature .feature-copy>p{max-width:230px}.neon-card-art i:nth-child(4){inset:86px}.neon-feature .play-button{position:relative;z-index:3}.game-switch button{font-size:11px;padding:8px 10px}}
 @media(display-mode:standalone){html,body{background:#0c1022;overscroll-behavior-y:none}.site-header{padding-top:env(safe-area-inset-top)}.mobile-nav{padding-bottom:calc(10px + env(safe-area-inset-bottom))}.app-shell:not(.view-tunnel){padding-bottom:env(safe-area-inset-bottom)}.tunnel-review{height:100dvh;min-height:100dvh}}
 @media(max-height:700px){.tunnel-overlay:not(.tunnel-countdown){inset:150px 12px 120px}.tunnel-overlay .tunnel-glass{padding:18px}.tunnel-overlay h2{font-size:23px}.tunnel-glass>p{margin:8px 0}.tunnel-glass .tunnel-secondary{margin-top:8px}}
+/* A swipe exits before the card order changes. Pointer tracking paints once per frame. */
+.deck-stack{-webkit-touch-callout:none;transition:none}.deck-pane{transition:transform .22s cubic-bezier(.2,.7,.25,1),opacity .22s ease;backface-visibility:hidden}.deck-recycled{transition:none!important}.deck-settling .deck-front{pointer-events:none;opacity:0;transition:transform .22s cubic-bezier(.2,.7,.25,1),opacity .22s ease}.deck-controls button:disabled{opacity:.55;cursor:default}
+@media(prefers-reduced-motion:reduce){.deck-pane,.deck-stack{transition:none!important;animation:none!important}}
+
+.game-deck{overflow-x:clip;overflow-y:visible}
