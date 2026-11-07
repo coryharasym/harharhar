@@ -1,0 +1,5 @@
+export const ICONS=['orbit','spark','moon','bolt','diamond','flame','leaf','crown'] as const;
+export type PlayerIconId=typeof ICONS[number];
+export type PlayerProfile={id:string;key:string;name:string;icon:PlayerIconId};
+export function validPlayer(value:unknown):value is PlayerProfile {if(!value||typeof value!=='object')return false;const p=value as PlayerProfile;return typeof p.id==='string'&&/^[a-f0-9-]{36}$/.test(p.id)&&typeof p.key==='string'&&/^[a-f0-9]{64}$/.test(p.key)&&typeof p.name==='string'&&!!p.name.trim()&&p.name.trim().length<=18&&!/[<>\x00-\x1f]/.test(p.name)&&ICONS.includes(p.icon);}
+export function createIdentity(){const bytes=crypto.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const hex=Array.from(bytes,n=>n.toString(16).padStart(2,'0')).join('');const id=`${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;return {id,key:Array.from(crypto.getRandomValues(new Uint8Array(32)),n=>n.toString(16).padStart(2,'0')).join('')};}

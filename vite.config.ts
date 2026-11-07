@@ -1,3 +1,4 @@
+import {arcadeDevEntry} from './scripts/vite/arcade-dev-entry';
 import vinext from "vinext";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
@@ -53,6 +54,7 @@ export default defineConfig(async ({ command }) => {
         : {}),
     },
     plugins: [
+      ...(command === "serve" ? [arcadeDevEntry()] : []),
       vinext(),
       sites({ mockAuth: !managedLinux }),
       connectorPreview(),
