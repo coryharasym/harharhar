@@ -28,3 +28,20 @@ export function bindTouchTurn(button:HTMLElement,direction:-1|1,held:HeldTurn,is
  button.addEventListener('touchstart',start,{passive:false});button.addEventListener('touchmove',move,{passive:false});button.addEventListener('touchend',end,{passive:false});button.addEventListener('touchcancel',end,{passive:false});button.addEventListener('contextmenu',menu);
  return()=>{button.removeEventListener('touchstart',start);button.removeEventListener('touchmove',move);button.removeEventListener('touchend',end);button.removeEventListener('touchcancel',end);button.removeEventListener('contextmenu',menu);};
 }
+
+// Displacement controls turn speed, not a destination angle. A stationary finger
+// off-centre therefore keeps steering on every simulation tick.
+export function swipeSteering(displacement:number,width:number,sensitivity=1){
+ const deadZone=8,travel=Math.max(48,Math.min(96,width*.22));
+ if(Math.abs(displacement)<=deadZone)return 0;
+ return Math.sign(displacement)*Math.min(127,Math.round((Math.abs(displacement)-deadZone)/(travel-deadZone)*127*sensitivity));
+}
+export class SwipeTurn {
+ private owner:number|null=null;private origin=0;
+ input=0;
+ get active(){return this.owner!==null;}
+ begin(id:number,x:number){if(this.active)return false;this.owner=id;this.origin=x;this.input=0;return true;}
+ move(id:number,x:number,width:number,sensitivity=1){if(id===this.owner)this.input=swipeSteering(x-this.origin,width,sensitivity);}
+ release(id:number){if(id!==this.owner)return false;this.clear();return true;}
+ clear(){this.owner=null;this.input=0;}
+}
