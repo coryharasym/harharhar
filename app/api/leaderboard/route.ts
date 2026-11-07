@@ -1,3 +1,4 @@
+import {isAllowedOrigin} from '../../../lib/cors';
 import {getDb} from '../../../db';
 import {runs,scores} from '../../../db/schema';
 import {desc,eq,gte,and} from 'drizzle-orm';
@@ -7,7 +8,7 @@ export async function GET(request:Request) {
   catch { return Response.json({error:'The leaderboard is temporarily unavailable. Please try again.'},{status:503}); }
 }
 export async function POST(request:Request) {
-  if(request.headers.get('origin')!==new URL(request.url).origin)return Response.json({error:'Request origin is invalid.'},{status:403});
+  if(!isAllowedOrigin(request))return Response.json({error:'Request origin is invalid.'},{status:403});
   try {
     const raw=await request.text();if(raw.length>20000)return Response.json({error:'Run is too long to submit.'},{status:400});
     const {id,name,moves}=JSON.parse(raw);

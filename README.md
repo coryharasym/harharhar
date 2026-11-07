@@ -20,7 +20,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-The interface uses HTML/CSS, React, and TypeScript, rendered by Vinext. The shared leaderboard runs on a Cloudflare Worker with D1. GitHub holds the source; GitHub Pages alone cannot run the leaderboard API.
+The public homepage is https://coryharasym.github.io/harharhar/. A standalone Vite build serves the existing React/HTML/CSS interface from GitHub Pages. The leaderboard API runs separately on the public Worker at https://har-har-har.cooory.chatgpt.site with D1 storage. The server-rendered version is retained for API hosting and development.
 
 ```sh
 pnpm test
@@ -38,10 +38,22 @@ Production migrations are applied by Sites during publication. The hosting ident
 
 Online runs can be submitted within 30 days. If the API is unavailable, the player can start an explicitly labelled practice run; practice scores cannot be submitted. The UI includes loading, error, empty, and retry states.
 
+## GitHub Pages publication
+
+The existing Pages configuration publishes `main` at the repository root. `index.html`, `assets/`, `favicon.svg`, and `.nojekyll` are generated and tracked so the current branch-based setup works without changing repository settings.
+
+```sh
+pnpm build:pages
+```
+
+Run this after frontend edits and commit the regenerated files with the source. CI rebuilds the Pages files and rejects stale output. Assets use the `/harharhar/` base path. Hash navigation keeps Games, 2048, and Scores available without server rewrites.
+
+The static entry configures the public API host; API requests do not point at GitHub Pages. The Worker allows cross-origin requests from exactly `https://coryharasym.github.io`, handles JSON preflights, and does not use cookies for Pages requests. Other browser origins do not receive cross-origin access. Nickname-based gameplay and score submissions are public; no ChatGPT login is needed to play.
+
 ## Review process
 
-`main` was initialized separately. This implementation is on `feat/midnight-arcade-2048`. Merging requires Cory's explicit approval. Hosting a private review build does not merge this branch or make the site public.
+Changes are developed on feature branches. Merging requires Cory's explicit approval. The GitHub Pages compatibility update was explicitly approved for implementation and merge.
 
 ## Validation
 
-Seven game-engine tests cover one-merge-per-tile rules, all directions, invalid moves, spawning, deterministic replay, game over, and initial board generation. Browser QA covers moving and merging, saved-game recovery, score submission, mobile layout, and swipe input at a 390px viewport.
+Eleven automated tests cover API URL selection, exact-origin access, JSON preflights, error responses, and the game engine: one-merge-per-tile rules, all directions, invalid moves, spawning, deterministic replay, game over, and initial board generation. Browser QA covers moving and merging, saved-game recovery, score submission, mobile layout, and swipe input at a 390px viewport.
