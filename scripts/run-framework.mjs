@@ -7,10 +7,11 @@ const [command, ...args] = process.argv.slice(2);
 if (!["dev", "build"].includes(command)) throw new Error("Expected dev or build.");
 const managedLinux = readExecutionProfile() === "managed-linux";
 
-if (managedLinux && command === "build") {
-  const result = spawnSync("bash", [
-    fileURLToPath(new URL("./build-verified.sh", import.meta.url)), ...args,
-  ], { stdio: "inherit" });
+if (command === "build") {
+  // The framework CLI exits its process after building; keep post-build caching in this parent.
+  const result = managedLinux
+    ? spawnSync("bash", [fileURLToPath(new URL("./build-verified.sh", import.meta.url)), ...args], {stdio:"inherit"})
+    : spawnSync(process.execPath, [fileURLToPath(new URL("../node_modules/vinext/dist/cli.js", import.meta.url)), "build", ...args], {stdio:"inherit"});
   if (result.error) throw result.error;
   if(result.status===0)await preparePwa("dist/client");
   process.exit(result.status ?? 1);
@@ -24,4 +25,3 @@ process.argv = [process.execPath, fileURLToPath(cli), command,
   ...(!managedLinux && command === "dev" ? ["--port", "5173"] : []), ...args];
 await import(cli.href);
 
-if(command === "build")await preparePwa("dist/client");
