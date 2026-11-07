@@ -58,3 +58,5 @@ footer.tunnel-bottom{display:block;height:auto;min-height:0;max-width:none;margi
 @media(prefers-reduced-motion:reduce){.deck-pane,.deck-stack{transition:none!important;animation:none!important}}
 
 .game-deck{overflow-x:clip;overflow-y:visible}
+/* Keep gameplay gestures from selecting the HUD or opening iOS copy/share callouts. */
+main.tunnel-review,main.tunnel-review *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-user-drag:none}
