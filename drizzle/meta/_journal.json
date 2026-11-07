@@ -15,6 +15,13 @@
       "when": 1794018134767,
       "tag": "0001_special_the_captain",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794021839667,
+      "tag": "0002_endless_blocks",
+      "breakpoints": true
     }
   ]
 }
