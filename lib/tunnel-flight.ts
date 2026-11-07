@@ -1,25 +1,34 @@
 // Midnight Circuit rules v2. Fixed ticks and recorded steering keep phone restoration deterministic.
 export const TAU=Math.PI*2;
 export const FLIGHT={hz:60,speed:17,maxSpeed:29,rampSeconds:75,maxTurn:Math.PI,shipRadius:6.9,wallRadius:8.65,shipZ:3.5,shipAngularRadius:.09,barrierSpacing:38,firstBarrier:52};
-export type BarrierKind='block'|'gate'|'rotor'|'pulse'|'stagger';
-export type FlightBarrier={index:number;at:number;kind:BarrierKind;angle:number;halfWidth:number};
+export type BarrierKind='block'|'gate'|'rotor'|'pulse'|'stagger'|'double';
+export type FlightBarrier={index:number;at:number;kind:BarrierKind;angle:number;halfWidth:number;pattern?:'alternating'|'double'|'spiral'|'rotating'};
 export type FlightItem={index:number;at:number;kind:'crystal'|'shield'|'magnet';angle:number};
 export type FlightEvent='crystal'|'near'|'damage'|'shield-hit'|'shield'|'magnet'|'over';
 export type FlightState={seed:number;ticks:number;angle:number;distance:number;time:number;passed:number;clips:number;lastCrossed:number;lastItem:number;hp:number;score:number;crystals:number;nearMisses:number;combo:number;comboUntil:number;shieldUntil:number;magnetUntil:number;invulnerableUntil:number;impactSerial:number;impactTick:number;impactKind:'hull'|'shield'|'fatal'|null;feedback:'clear'|'clip'|null;feedbackUntil:number;events:FlightEvent[]};
 export const wrapAngle=(angle:number)=>((angle+Math.PI)%TAU+TAU)%TAU-Math.PI;
 export const degrees=(angle:number)=>((Math.round(angle*180/Math.PI)%360)+360)%360;
 function hash(seed:number,index:number){let x=(seed^Math.imul(index+1,0x9e3779b9))>>>0;x=Math.imul(x^(x>>>16),0x21f0aaad);x=Math.imul(x^(x>>>15),0x735a2d97);return ((x^(x>>>15))>>>0)/4294967296;}
-export function routeAngle(index:number,seed=42){return hash(seed,0)*TAU+index*.72+Math.sin(index*.9+hash(seed,1)*TAU)*.4;}
+export function obstaclePattern(index:number):{kind:'alternating'|'double'|'spiral'|'rotating';start:number}|null{
+ const introductions=[{start:24,count:4,kind:'alternating'},{start:36,count:4,kind:'double'},{start:48,count:6,kind:'spiral'},{start:60,count:4,kind:'rotating'}] as const;
+ for(const p of introductions)if(index>=p.start&&index<p.start+p.count)return {kind:p.kind,start:p.start};
+ if(index>=72){const start=72+Math.floor((index-72)/8)*8;if(index-start<4)return {kind:(['alternating','double','spiral','rotating'] as const)[Math.floor((index-72)/8)%4],start};}
+ return null;
+}
+const baseRoute=(index:number,seed:number)=>hash(seed,0)*TAU+index*.72+Math.sin(index*.9+hash(seed,1)*TAU)*.4;
+export function routeAngle(index:number,seed=42){const pattern=obstaclePattern(index);if(pattern?.kind==='alternating')return baseRoute(pattern.start,seed)+(index-pattern.start)%2*Math.PI;if(pattern?.kind==='spiral')return baseRoute(pattern.start,seed)+(index-pattern.start)*.62;return baseRoute(index,seed);}
+export const isGate=(barrier:FlightBarrier)=>barrier.kind==='gate'||barrier.kind==='rotor';
 export function flightSpeed(time:number){return FLIGHT.speed+(FLIGHT.maxSpeed-FLIGHT.speed)*Math.min(1,Math.max(0,time)/FLIGHT.rampSeconds);}
 export function barrierAt(index:number,seed=42,time=0):FlightBarrier{
  const at=FLIGHT.firstBarrier+index*FLIGHT.barrierSpacing,progress=Math.min(1,index/48);
  let kind:BarrierKind=index%2?'block':'gate';
  if(index>=22&&index%7===4)kind='pulse';else if(index>=8&&index%9>=6)kind='stagger';else if(index>=6&&index%5===3)kind='rotor';
- const opening=kind==='gate'||kind==='rotor';let angle=routeAngle(index,seed)+(opening?0:Math.PI);
+ const pattern=obstaclePattern(index);if(pattern)kind=pattern.kind==='double'?'double':pattern.kind==='rotating'?'rotor':'gate';
+ const opening=kind==='gate'||kind==='rotor';let angle=routeAngle(index,seed)+(opening?0:kind==='double'?Math.PI/2:Math.PI);
  if(kind==='rotor')angle+=Math.sin(time*.6+hash(seed,index+70)*TAU)*.42;
- return {index,at,kind,angle,halfWidth:opening?1.02-.32*progress:.32+.08*progress};
+ return {index,at,kind,angle,halfWidth:opening?1.02-.32*progress:kind==='double'?.42+.12*progress:.32+.08*progress,pattern:pattern?.kind};
 }
-export function barrierMargin(barrier:FlightBarrier,angle:number){const separation=Math.abs(wrapAngle(angle-barrier.angle));return barrier.kind==='gate'||barrier.kind==='rotor'?barrier.halfWidth-separation-FLIGHT.shipAngularRadius:separation-barrier.halfWidth-FLIGHT.shipAngularRadius;}
+export function barrierMargin(barrier:FlightBarrier,angle:number){const offset=wrapAngle(angle-barrier.angle),separation=barrier.kind==='double'?Math.min(Math.abs(offset),Math.abs(wrapAngle(offset-Math.PI))):Math.abs(offset);return barrier.kind==='gate'||barrier.kind==='rotor'?barrier.halfWidth-separation-FLIGHT.shipAngularRadius:separation-barrier.halfWidth-FLIGHT.shipAngularRadius;}
 export function barrierHits(barrier:FlightBarrier,angle:number){return barrierMargin(barrier,angle)<=0;}
 export function itemAt(index:number,seed=42):FlightItem{
  const at=16+index*12,position=Math.max(0,(at-FLIGHT.firstBarrier)/FLIGHT.barrierSpacing),left=Math.floor(position),fraction=position-left;
