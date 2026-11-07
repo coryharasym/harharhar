@@ -1,3 +1,4 @@
+import {initialFlightCheckpoint,verifyFlightBatch,type FlightCheckpoint,FLIGHT_RULES} from '../../../lib/flight-sync';
 import {LEADERBOARD_SQL,candidateRank,type RankedScore} from '../../../lib/leaderboard';
 import {env} from 'cloudflare:workers';
 import {isAllowedOrigin} from '../../../lib/cors';
@@ -8,7 +9,7 @@ import {replay} from '../../../lib/game';
 import {replayBlocks as replayLegacyBlocks} from '../../../lib/blocks-legacy';
 import {initialBlockCheckpoint,verifyBlockBatch,type BlockCheckpoint} from '../../../lib/block-sync';
 import {savePlayer,ProfileError} from '../../../lib/player-server';
-export async function GET(request:Request){try{const params=new URL(request.url).searchParams,game=params.get('game')||'2048';if(!['2048','blocks'].includes(game))return Response.json({error:'Unknown game.'},{status:400});const cutoff=params.get('period')==='week'?Date.now()-7*86400000:0;
+export async function GET(request:Request){try{const params=new URL(request.url).searchParams,game=params.get('game')||'2048';if(!['2048','blocks','tunnel'].includes(game))return Response.json({error:'Unknown game.'},{status:400});const cutoff=params.get('period')==='week'?Date.now()-7*86400000:0;
  const rows=await env.DB!.prepare(LEADERBOARD_SQL).bind(game,cutoff).all();return Response.json({scores:rows.results},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'The leaderboard is temporarily unavailable. Please try again.'},{status:503});}}
 export async function POST(request:Request){
@@ -16,9 +17,15 @@ export async function POST(request:Request){
  try {const raw=await request.text();if(raw.length>20000)return Response.json({error:'Run is too long to submit.'},{status:400});const payload=JSON.parse(raw),{id,moves}=payload;let name=payload.name;
  if(typeof id!=='string'||id.length>64||typeof name!=='string'||!name.trim()||name.trim().length>18||/[<>\x00-\x1f]/.test(name)||typeof moves!=='string'||moves.length>16000)return Response.json({error:'Enter a player name and play a few moves first.'},{status:400});
  const db=getDb();const [run]=await db.select().from(runs).where(and(eq(runs.id,id),gte(runs.created,Date.now()-30*86400000)));if(!run)return Response.json({error:'This run has expired. Start a new game to submit a score.'},{status:400});
- let score:number,tile=0,lines=0,count:number,checkpoint:BlockCheckpoint|null=null;
+ let score:number,tile=0,lines=0,count:number,checkpoint:BlockCheckpoint|null=null,flightCheckpoint:FlightCheckpoint|null=null;
  const progressConflict=(value:string|null)=>{const current=value?JSON.parse(value) as BlockCheckpoint:initialBlockCheckpoint(run.seed);return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});};
- try{if(run.game==='blocks'&&run.rules===2){
+ try{if(run.game==='tunnel'){
+  if(run.rules!==FLIGHT_RULES)throw Error('Unsupported flight');
+  const current=run.blockCheckpoint?JSON.parse(run.blockCheckpoint) as FlightCheckpoint:initialFlightCheckpoint(run.seed);
+  if(payload.flightOffset!==current.offset||payload.flightHash!==current.hash)return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});
+  flightCheckpoint=verifyFlightBatch(current,payload.flightOffset,payload.flightHash,moves,Date.now()-run.created);
+  score=flightCheckpoint.game.score;lines=flightCheckpoint.game.crystals;count=flightCheckpoint.game.ticks;
+ }else if(run.game==='blocks'&&run.rules===2){
   const current=run.blockCheckpoint?JSON.parse(run.blockCheckpoint) as BlockCheckpoint:initialBlockCheckpoint(run.seed);
   if(payload.blockOffset!==current.offset||payload.blockHash!==current.hash)return progressConflict(run.blockCheckpoint);
   checkpoint=verifyBlockBatch(current,payload.blockOffset,payload.blockHash,moves);
@@ -32,11 +39,12 @@ export async function POST(request:Request){
  const [previousRun]=await db.select().from(scores).where(eq(scores.id,id));
  if(previousRun?.playerId&&previousRun.playerId!==playerId)return Response.json({error:'This run belongs to another profile.'},{status:403});
  // Commit verified progress even when this score does not qualify for the top five.
- if(checkpoint&&checkpoint.offset!== (run.blockCheckpoint?JSON.parse(run.blockCheckpoint).offset:0)){
-  const updated=await db.update(runs).set({blockCheckpoint:JSON.stringify(checkpoint),created:now}).where(and(eq(runs.id,id),run.blockCheckpoint===null?isNull(runs.blockCheckpoint):eq(runs.blockCheckpoint,run.blockCheckpoint))).returning({id:runs.id});
-  if(!updated.length){const [current]=await db.select().from(runs).where(eq(runs.id,id));return progressConflict(current.blockCheckpoint);}
+ const progress=flightCheckpoint||checkpoint;
+ if(progress&&progress.offset!== (run.blockCheckpoint?JSON.parse(run.blockCheckpoint).offset:0)){
+  const updated=await db.update(runs).set({blockCheckpoint:JSON.stringify(progress),...(flightCheckpoint?{}:{created:now})}).where(and(eq(runs.id,id),run.blockCheckpoint===null?isNull(runs.blockCheckpoint):eq(runs.blockCheckpoint,run.blockCheckpoint))).returning({id:runs.id});
+  if(!updated.length){const [current]=await db.select().from(runs).where(eq(runs.id,id));return flightCheckpoint?Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).offset:0,verifiedHash:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).hash:2166136261},{status:409}):progressConflict(current.blockCheckpoint);}
  }
- const verified=checkpoint?{verifiedOffset:checkpoint.offset,verifiedHash:checkpoint.hash}:{};
+ const verified=progress?{verifiedOffset:progress.offset,verifiedHash:progress.hash}:{};
  const identityFilter=playerId?eq(scores.playerId,playerId):and(sql`${scores.playerId} IS NULL`,sql`lower(${scores.name})=${name.trim().toLowerCase()}`);
  const [best]=await db.select().from(scores).where(and(eq(scores.game,run.game),identityFilter)).orderBy(desc(scores.score),scores.moves,scores.created).limit(1);
  const before=await env.DB!.prepare(LEADERBOARD_SQL).bind(run.game,0).all<RankedScore>();

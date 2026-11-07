@@ -1,3 +1,4 @@
+import {preparePwa} from "./prepare-pwa.mjs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { readExecutionProfile } from "./execution-profile.mjs";
@@ -11,6 +12,7 @@ if (managedLinux && command === "build") {
     fileURLToPath(new URL("./build-verified.sh", import.meta.url)), ...args,
   ], { stdio: "inherit" });
   if (result.error) throw result.error;
+  if(result.status===0)await preparePwa("dist/client");
   process.exit(result.status ?? 1);
 }
 
@@ -21,3 +23,5 @@ const cli = new URL(managedLinux
 process.argv = [process.execPath, fileURLToPath(cli), command,
   ...(!managedLinux && command === "dev" ? ["--port", "5173"] : []), ...args];
 await import(cli.href);
+
+if(command === "build")await preparePwa("dist/client");
