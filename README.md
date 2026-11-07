@@ -9,7 +9,7 @@ A mobile-first puzzle arcade for adults. Midnight Arcade pairs deep navy with vi
 - Automatic device-local game recovery, editable player nickname, eight selectable profile icons, and personal bests. A random device token authorizes profile edits; only its hash is stored on the server. Names and icons update on existing leaderboard entries; score snapshots cannot overwrite a newer profile edit.
 - Shared all-time and rolling seven-day top-five leaderboards, with one personal best per device profile per game. Qualifying scores publish automatically while playing; notifications announce entry and improved rank without ending the run. The server verifies every score by replaying the registered run, and later snapshots update the same record only when they improve it.
 - Continued play after reaching 2048, game-over handling, and confirmation before replacing a run.
-- Clearly labelled future games: Word Hunt and Pipes. These are placeholders, not playable games.
+- Swipeable game-card deck with previous/next buttons, direct card selection, keyboard arrows, and an animated Shuffle button. The phone remembers deck order; favourites filter the playable deck. Future-game placeholders have been removed.
 
 ## Development
 
