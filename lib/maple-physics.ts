@@ -17,7 +17,9 @@ export function newWorld(seed=42):MapleWorld{return {tick:0,nextId:1,rng:seed>>>
 export function validTier(tier:number){return Number.isInteger(tier)&&tier>=0&&tier<PIECES.length;}
 export const spawnY=(tier:number)=>Math.max(BOWL.spawn,PIECES[tier].radius+35);
 export function aimX(x:number,tier:number){const r=PIECES[tier].radius;return clamp(x,BOWL.left+r,BOWL.right-r);}
-export function canDrop(world:MapleWorld,x:number,tier:number){if(!validTier(tier)||!Number.isFinite(x)||world.tick-world.lastDrop<BOWL.dropTicks)return false;x=aimX(x,tier);const r=PIECES[tier].radius;return world.balls.every(b=>Math.hypot(b.x-x,b.y-spawnY(tier))>=PIECES[b.tier].radius+r+1);}
+// Use the same elementary operations in browser and server replay; avoid runtime-specific hypot implementations.
+const distance2d=(x:number,y:number)=>Math.sqrt(x*x+y*y);
+export function canDrop(world:MapleWorld,x:number,tier:number){if(!validTier(tier)||!Number.isFinite(x)||world.tick-world.lastDrop<BOWL.dropTicks)return false;x=aimX(x,tier);const r=PIECES[tier].radius;return world.balls.every(b=>distance2d(b.x-x,b.y-spawnY(tier))>=PIECES[b.tier].radius+r+1);}
 export function drop(world:MapleWorld,x:number,tier:number){if(!canDrop(world,x,tier))return false;world.balls.push({id:world.nextId++,tier,x:aimX(x,tier),y:spawnY(tier),vx:0,vy:0,born:world.tick,px:aimX(x,tier),py:spawnY(tier)});world.drops++;world.lastDrop=world.tick;return true;}
 export function nextTier(world:MapleWorld){world.rng=(Math.imul(world.rng,1664525)+1013904223)>>>0;return Math.floor(world.rng/4294967296*5);}
 const mass=(ball:Ball)=>PIECES[ball.tier].radius**2;
@@ -28,7 +30,7 @@ export function stepWorld(world:MapleWorld){world.tick++;world.effects=world.eff
  const consumed=new Set<number>(),pending:Ball[]=[];
  for(let iteration=0;iteration<BOWL.iterations;iteration++){
  for(let i=0;i<world.balls.length;i++){const a=world.balls[i];if(consumed.has(a.id))continue;
- for(let j=i+1;j<world.balls.length;j++){const b=world.balls[j];if(consumed.has(b.id))continue;const radius=PIECES[a.tier].radius+PIECES[b.tier].radius,dx=b.x-a.x,dy=b.y-a.y,distance=Math.hypot(dx,dy);if(distance>radius+.02)continue;
+ for(let j=i+1;j<world.balls.length;j++){const b=world.balls[j];if(consumed.has(b.id))continue;const radius=PIECES[a.tier].radius+PIECES[b.tier].radius,dx=b.x-a.x,dy=b.y-a.y,distance=distance2d(dx,dy);if(distance>radius+.02)continue;
  if(a.tier===b.tier&&a.tier<10&&a.born<world.tick&&b.born<world.tick){consumed.add(a.id);consumed.add(b.id);const tier=a.tier+1,r=PIECES[tier].radius,ma=mass(a),mb=mass(b),id=world.nextId++;const x=clamp((a.x+b.x)/2,BOWL.left+r,BOWL.right-r),y=Math.min((a.y+b.y)/2,BOWL.floor-r);const merged:Ball={id,tier,x,y,px:x,py:y,vx:clamp((a.vx*ma+b.vx*mb)/(ma+mb)*.5,-100,100),vy:clamp((a.vy*ma+b.vy*mb)/(ma+mb)*.5,-120,120),born:world.tick};pending.push(merged);world.merges++;world.effects.push({parents:[a.id,b.id],id,tier,x,y,tick:world.tick});break;}
  const nx=distance>.00001?dx/distance:1,ny=distance>.00001?dy/distance:0,ia=1/mass(a),ib=1/mass(b),sum=ia+ib,overlap=radius-distance;
  if(overlap>0){const correction=Math.max(0,overlap-.015)*.8/sum;a.x-=nx*correction*ia;a.y-=ny*correction*ia;b.x+=nx*correction*ib;b.y+=ny*correction*ib;}

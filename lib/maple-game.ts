@@ -3,7 +3,7 @@ export const MAPLE_RULES={version:2,dangerY:145,dangerTicks:360,entryGrace:120,c
 export const DROP_WEIGHTS=[30,25,20,15,10] as const;
 export type Entry={entered:boolean;birth:number};
 export type Award={id:number;tier:number;points:number;multiplier:number;tick:number};
-export type MapleGame={world:MapleWorld;current:number;next:number;score:number;highest:number;bestChain:number;mooseCount:number;dangerTicks:number;over:boolean;paused:boolean;practice:boolean;lineage:Record<number,number>;entry:Record<number,Entry>;awards:Award[]};
+export type MapleGame={competitive?:{id:string;seed:number;moves:string};world:MapleWorld;current:number;next:number;score:number;highest:number;bestChain:number;mooseCount:number;dangerTicks:number;over:boolean;paused:boolean;practice:boolean;lineage:Record<number,number>;entry:Record<number,Entry>;awards:Award[]};
 export type GameDrop={tick:number;x:number};
 export function mergePoints(tier:number){return tier<1?0:(tier+1)*(tier+2)/2;}
 export function weightedTier(world:MapleWorld){world.rng=(Math.imul(world.rng,1664525)+1013904223)>>>0;const roll=world.rng/4294967296*100;let total=0;for(let tier=0;tier<DROP_WEIGHTS.length;tier++){total+=DROP_WEIGHTS[tier];if(roll<total)return tier;}return 4;}

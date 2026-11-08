@@ -11,6 +11,7 @@ const tier=uint.max(PIECES.length-1);
 const ball=z.object({id,tier,x:coordinate,y:coordinate,vx:coordinate,vy:coordinate,born:uint,px:coordinate,py:coordinate});
 const merge=z.object({parents:z.tuple([id,id]),id,tier,x:coordinate,y:coordinate,tick:uint});
 const gameSchema=z.object({
+ competitive:z.object({id:z.string().uuid(),seed:uint.max(0xffffffff),moves:z.string().max(350000).regex(/^[0-9a-z]*$/).refine(s=>s.length%11===0)}).optional(),
  world:z.object({tick:uint,nextId:id,rng:uint.max(0xffffffff),balls:z.array(ball).max(512),merges:uint,drops:uint,lastDrop:z.number().int().min(-BOWL.dropTicks).max(Number.MAX_SAFE_INTEGER),effects:z.array(merge).max(512)}),
  current:uint.max(4),next:uint.max(4),score:uint,highest:uint.max(11),bestChain:uint.min(1).max(MAPLE_RULES.chainCap),mooseCount:uint,dangerTicks:uint.max(MAPLE_RULES.dangerTicks),over:z.boolean(),paused:z.boolean(),practice:z.literal(false),
  lineage:z.record(z.string(),uint.min(1)),entry:z.record(z.string(),z.object({entered:z.boolean(),birth:uint})),
@@ -28,6 +29,7 @@ export function decodeMapleSave(raw:string):MapleSave|null{
   const save=result.data,g=save.game,w=g.world,ids=new Set(w.balls.map(b=>b.id));
   if(ids.size!==w.balls.length||w.lastDrop>w.tick||save.best<g.score||g.over!==(g.dangerTicks===MAPLE_RULES.dangerTicks))return null;
   if(w.balls.some(b=>b.id>=w.nextId||b.born>w.tick||b.x<BOWL.left+PIECES[b.tier].radius-.1||b.x>BOWL.right-PIECES[b.tier].radius+.1))return null;
+  if(g.competitive){const m=g.competitive.moves;if(m.length/11!==w.drops)return null;let previous=-1;for(let i=0;i<m.length;i+=11){const t=parseInt(m.slice(i,i+7),36),x=parseInt(m.slice(i+7,i+11),36);if(t<=previous||t>w.tick||x<35000||x>325000)return null;previous=t;}}
   if(Object.keys(g.entry).length>512||Object.keys(g.lineage).length>512)return null;
   if(Object.entries(g.entry).some(([key,v])=>!ids.has(Number(key))||String(Number(key))!==key||v.birth>w.tick))return null;
   if(Object.entries(g.lineage).some(([key])=>!ids.has(Number(key))||String(Number(key))!==key))return null;
