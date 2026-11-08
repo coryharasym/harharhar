@@ -1,6 +1,6 @@
 import {initialMapleCheckpoint,verifyMapleBatch,type MapleCheckpoint} from '../../../lib/maple-sync';
 import {initialFlightCheckpoint,verifyFlightBatch,type FlightCheckpoint,FLIGHT_RULES} from '../../../lib/flight-sync';
-import {LEADERBOARD_SQL,candidateRank,type RankedScore} from '../../../lib/leaderboard';
+import {LEADERBOARD_SQL,LEADERBOARD_LIMIT,candidateRank,type RankedScore} from '../../../lib/leaderboard';
 import {env} from 'cloudflare:workers';
 import {isAllowedOrigin} from '../../../lib/cors';
 import {getDb} from '../../../db';
@@ -45,7 +45,7 @@ export async function POST(request:Request){
  const playerId=profile?.id||null,now=Date.now();
  const [previousRun]=await db.select().from(scores).where(eq(scores.id,id));
  if(previousRun?.playerId&&previousRun.playerId!==playerId)return Response.json({error:'This run belongs to another profile.'},{status:403});
- // Commit verified progress even when this score does not qualify for the top five.
+ // Commit verified progress even when this score does not qualify for the top ten.
  const progress=mapleCheckpoint||flightCheckpoint||checkpoint;
  if(progress&&progress.offset!== (run.blockCheckpoint?JSON.parse(run.blockCheckpoint).offset:0)){
   const updated=await db.update(runs).set({blockCheckpoint:JSON.stringify(progress),...((flightCheckpoint||mapleCheckpoint)?{}:{created:now})}).where(and(eq(runs.id,id),run.blockCheckpoint===null?isNull(runs.blockCheckpoint):eq(runs.blockCheckpoint,run.blockCheckpoint))).returning({id:runs.id});
@@ -59,7 +59,7 @@ export async function POST(request:Request){
  const findRank=(rows:RankedScore[])=>{const index=rows.findIndex(r=>playerId?r.playerId===playerId:!r.playerId&&r.name.toLowerCase()===name.trim().toLowerCase());return index<0?null:index+1;};
  if(best&&(best.score>score||(best.score===score&&best.moves<=count)))return Response.json({...verified,ok:true,published:best.id===id,rank:findRank(before.results),score:best.score});
  const candidate:RankedScore={id,playerId,name:name.trim(),score,moves:count,created:now};
- if(candidateRank(before.results,candidate)>5)return Response.json({...verified,ok:true,published:false,rank:null,score});
+ if(candidateRank(before.results,candidate)>LEADERBOARD_LIMIT)return Response.json({...verified,ok:true,published:false,rank:null,score});
  await db.insert(scores).values({id,name:name.trim(),score,tile,lines,moves:count,created:now,game:run.game,playerId,icon:profile?.icon||'orbit'}).onConflictDoUpdate({target:scores.id,set:{score,tile,lines,moves:count,created:now,playerId,icon:profile?.icon||'orbit'},setWhere:sql`${scores.score}<${score} OR (${scores.score}=${score} AND ${scores.moves}>${count}) OR (${scores.playerId} IS NULL AND ${playerId} IS NOT NULL)`});
  const after=await env.DB!.prepare(LEADERBOARD_SQL).bind(run.game,0).all<RankedScore>();
  const rank=findRank(after.results);return Response.json({...verified,ok:true,published:rank!==null,rank,score});
