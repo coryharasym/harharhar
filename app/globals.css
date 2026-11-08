@@ -125,3 +125,13 @@ main.tunnel-review,main.tunnel-review *{-webkit-user-select:none;user-select:non
 
 .maple-sound-panel{padding:18px 20px;scroll-margin:20px;margin-bottom:16px}.maple-sound-panel .maple-audio-heading{margin:0;padding:0;border:0}.maple-sound-panel h2{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:500;letter-spacing:-.3px}.maple-sound-panel>small{display:block;font-size:9px;line-height:1.6;color:var(--muted);margin-top:10px}.maple-sound-panel .maple-radio{margin-top:8px}.maple-guide{scroll-margin:20px}
 @media(max-width:700px){.maple-sound-panel{width:100%;padding:14px 16px;margin-bottom:0}}
+
+.maple-back-link{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:6px 0;background:transparent;color:#adb8ce;font-size:14px;text-align:left;white-space:nowrap}.maple-back-link:hover{color:var(--aqua)}
+@media(max-width:760px){
+ .maple-page .maple-header{position:sticky;top:0;z-index:30;display:grid;grid-template-columns:minmax(0,1fr) 44px 44px;height:auto;gap:4px 8px;padding:calc(8px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 4px max(12px,env(safe-area-inset-left,0px));background:#0d1425;box-shadow:0 1px 0 #a2b3dd15}
+ .maple-page .maple-header>span{display:none}
+ .maple-page .maple-header .maple-brand{margin:0;min-height:40px}
+ .maple-page .maple-header .icon-button{width:44px;height:44px}
+ .maple-back-link{grid-column:1/-1;justify-self:start;font-size:13px}
+ .maple-guide,.maple-sound-panel{scroll-margin-top:calc(116px + env(safe-area-inset-top,0px))}
+}
