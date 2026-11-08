@@ -45,4 +45,4 @@ export function stylePreviewSvg(style:MapleStyle){return svgData(`<svg xmlns="ht
 
 export const MAPLE_PREVIEWS=Object.fromEntries(MAPLE_STYLES.map(s=>[s.id,stylePreviewSvg(s.id)])) as Record<MapleStyle,string>;
 
-export const MAPLE_SCENERY_URL="./maple-art/alpine-morning-v1.webp";
+export const MAPLE_SCENERY_URL="./maple-art/misty-mint-v1.webp";
