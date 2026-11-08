@@ -60,8 +60,8 @@ footer.tunnel-bottom{display:block;height:auto;min-height:0;max-width:none;margi
 .game-deck{overflow-x:clip;overflow-y:visible}
 /* Keep gameplay gestures from selecting the HUD or opening iOS copy/share callouts. */
 main.tunnel-review,main.tunnel-review *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-user-drag:none}
-/* Static preview uses the game's ship model, Follow camera and tunnel palette. */
-.neon-feature .neon-card-art{right:-2px;top:21%;width:45%;height:72%;max-width:340px;border:0;border-radius:16px;transform:none;box-shadow:none;overflow:hidden;pointer-events:none;opacity:1;mask-image:linear-gradient(90deg,transparent,#000 20%);-webkit-mask-image:linear-gradient(90deg,transparent,#000 20%)}.neon-card-art>img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 60%;border-radius:16px;user-select:none;-webkit-user-drag:none}.neon-feature .feature-copy{max-width:67%}
-@media(max-width:600px){.neon-feature .neon-card-art{right:-9px;top:25%;width:44%;height:70%;opacity:.95;mask-image:linear-gradient(90deg,transparent,#000 26%);-webkit-mask-image:linear-gradient(90deg,transparent,#000 26%)}.neon-feature .feature-copy{max-width:none}.neon-feature .feature-copy>p{max-width:66%}.neon-feature .game-tags{position:relative;z-index:2}}
-.neon-feature .neon-card-art{height:69%;mask-image:linear-gradient(90deg,transparent,#000 20%),linear-gradient(180deg,transparent,#000 8%,#000 90%,transparent);mask-composite:intersect;-webkit-mask-image:linear-gradient(90deg,transparent,#000 20%),linear-gradient(180deg,transparent,#000 8%,#000 90%,transparent);-webkit-mask-composite:source-in}
-@media(max-width:600px){.neon-feature .neon-card-art{height:64%;mask-image:linear-gradient(90deg,transparent,#000 26%),linear-gradient(180deg,transparent,#000 8%,#000 90%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 26%),linear-gradient(180deg,transparent,#000 8%,#000 90%,transparent)}}
+/* Rounded transparent artwork shares the puzzle cards' softly shaded style. */
+.neon-feature .neon-card-art{right:0;top:27%;width:43%;height:62%;max-width:310px;border:0;border-radius:0;transform:none;box-shadow:none;overflow:visible;pointer-events:none;opacity:1;mask-image:none;-webkit-mask-image:none}
+.neon-card-art>img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;user-select:none;-webkit-user-drag:none}
+.neon-feature .feature-copy{max-width:67%}
+@media(max-width:600px){.neon-feature .neon-card-art{right:-4px;top:30%;width:43%;height:59%}.neon-feature .feature-copy{max-width:none}.neon-feature .feature-copy>p{max-width:66%}.neon-feature .game-tags{position:relative;z-index:2}}
