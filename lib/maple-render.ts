@@ -8,6 +8,7 @@ export function loadMapleAtlas(onLoad:()=>void):{atlas:MapleAtlas;dispose:()=>vo
  const atlas=Object.fromEntries(MAPLE_STYLES.filter(s=>!isMapleMaterial(s.id)).map(s=>[s.id,{characters:MAPLE_ART[s.id].characters.map(image),bin:image(MAPLE_ART[s.id].bin)}]))as MapleAtlas;
  for(const style of MAPLE_STYLES)if(isMapleMaterial(style.id)){
   const entry=atlas[style.id]={characters:atlas.woodland.characters,bin:atlas.woodland.bin} as MapleAtlas[MapleStyle];
+  if(style.id!=='velvet')continue;
   const source=image(materialUrl(style.id));source.onload=()=>{if(disposed)return;const sheet=document.createElement('canvas');sheet.width=source.naturalWidth;sheet.height=source.naturalHeight;const ctx=sheet.getContext('2d');if(!ctx)return;ctx.drawImage(source,0,0);const pixels=ctx.getImageData(0,0,sheet.width,sheet.height);for(let i=3;i<pixels.data.length;i+=4)pixels.data[i]=Math.max(0,Math.min(255,4*pixels.data[i]-510));ctx.putImageData(pixels,0,0);entry.sheet=sheet;onLoad();};
  }
  return {atlas,dispose:()=>{disposed=true;Object.values(atlas).forEach(a=>[a.bin,...a.characters].forEach(i=>{i.onload=null;i.onerror=null;}));}};

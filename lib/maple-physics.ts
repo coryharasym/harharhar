@@ -3,9 +3,9 @@ export const BOWL={width:360,height:550,left:22,right:338,floor:522,spawn:76,hz:
 export const PIECES=[
  {name:'Maple Seed',radius:13,color:'#dabb78'}, {name:'Acorn',radius:17,color:'#bd8af0'},
  {name:'Pinecone',radius:22,color:'#7ba2ee'}, {name:'Chipmunk',radius:28,color:'#e2a36f'},
- {name:'Squirrel',radius:35,color:'#e184a5'}, {name:'Snowshoe Hare',radius:43,color:'#b1c4ec'},
+ {name:'Otter',radius:35,color:'#e184a5'}, {name:'Snowshoe Hare',radius:43,color:'#b1c4ec'},
  {name:'Canada Goose',radius:52,color:'#66c8c5'}, {name:'Beaver',radius:62,color:'#b793ce'},
- {name:'Red Fox',radius:74,color:'#e39a70'}, {name:'Black Bear',radius:87,color:'#8b94cb'},
+ {name:'Red Panda',radius:74,color:'#e39a70'}, {name:'Black Bear',radius:87,color:'#8b94cb'},
  {name:'Moose',radius:102,color:'#a9d9b7'},
 ] as const;
 export type Ball={id:number;tier:number;x:number;y:number;vx:number;vy:number;born:number;px:number;py:number};
