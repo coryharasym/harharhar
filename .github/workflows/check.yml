@@ -20,4 +20,4 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
       - run: pnpm build:pages
-      - run: git diff --exit-code -- index.html assets favicon.svg .nojekyll manifest.webmanifest sw.js precache.json icons neon-dodger-preview.webp
+      - run: git diff --exit-code -- index.html assets favicon.svg .nojekyll manifest.webmanifest sw.js precache.json icons neon-dodger-preview.webp maple-art

@@ -1,6 +1,8 @@
 // Original vector character artwork. The circle at (0,0), r=50 is the collision body;
 // ears, tails and antlers are decorative. The physics engine never reads this module.
+import {MAPLE_MATERIALS} from './maple-materials.ts';
 export const MAPLE_STYLES=[
+ ...MAPLE_MATERIALS,
  {id:'woodland',name:'Woodland Soft',description:'Soft shading, honey wood and warm woodland colours.'},
  {id:'storybook',name:'Storybook',description:'Bold outlines, bright characters and an enamel-green bin.'},
  {id:'midnight',name:'Neon North',description:'Jewel colours, mint edge lights and a midnight arcade bin.'},
