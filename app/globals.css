@@ -122,3 +122,6 @@ main.tunnel-review,main.tunnel-review *{-webkit-user-select:none;user-select:non
  .maple-phase-two .maple-play-top{padding-bottom:8px;gap:7px}
  .maple-stats{padding:9px 7px}
 }
+
+.maple-sound-panel{padding:18px 20px;scroll-margin:20px;margin-bottom:16px}.maple-sound-panel .maple-audio-heading{margin:0;padding:0;border:0}.maple-sound-panel h2{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:500;letter-spacing:-.3px}.maple-sound-panel>small{display:block;font-size:9px;line-height:1.6;color:var(--muted);margin-top:10px}.maple-sound-panel .maple-radio{margin-top:8px}.maple-guide{scroll-margin:20px}
+@media(max-width:700px){.maple-sound-panel{width:100%;padding:14px 16px;margin-bottom:0}}
