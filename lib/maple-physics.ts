@@ -9,7 +9,7 @@ export const PIECES=[
  {name:'Moose',radius:102,color:'#a9d9b7'},
 ] as const;
 export type Ball={id:number;tier:number;x:number;y:number;vx:number;vy:number;born:number;px:number;py:number};
-export type Merge={id:number;tier:number;x:number;y:number;tick:number};
+export type Merge={parents:[number,number];id:number;tier:number;x:number;y:number;tick:number};
 export type MapleWorld={tick:number;nextId:number;rng:number;balls:Ball[];merges:number;drops:number;lastDrop:number;effects:Merge[]};
 export type DropAction={tick:number;x:number;tier:number};
 export const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
@@ -29,7 +29,7 @@ export function stepWorld(world:MapleWorld){world.tick++;world.effects=world.eff
  for(let iteration=0;iteration<BOWL.iterations;iteration++){
  for(let i=0;i<world.balls.length;i++){const a=world.balls[i];if(consumed.has(a.id))continue;
  for(let j=i+1;j<world.balls.length;j++){const b=world.balls[j];if(consumed.has(b.id))continue;const radius=PIECES[a.tier].radius+PIECES[b.tier].radius,dx=b.x-a.x,dy=b.y-a.y,distance=Math.hypot(dx,dy);if(distance>radius+.02)continue;
- if(a.tier===b.tier&&a.tier<10&&a.born<world.tick&&b.born<world.tick){consumed.add(a.id);consumed.add(b.id);const tier=a.tier+1,r=PIECES[tier].radius,ma=mass(a),mb=mass(b),id=world.nextId++;const x=clamp((a.x+b.x)/2,BOWL.left+r,BOWL.right-r),y=Math.min((a.y+b.y)/2,BOWL.floor-r);const merged:Ball={id,tier,x,y,px:x,py:y,vx:clamp((a.vx*ma+b.vx*mb)/(ma+mb)*.5,-100,100),vy:clamp((a.vy*ma+b.vy*mb)/(ma+mb)*.5,-120,120),born:world.tick};pending.push(merged);world.merges++;world.effects.push({id,tier,x,y,tick:world.tick});break;}
+ if(a.tier===b.tier&&a.tier<10&&a.born<world.tick&&b.born<world.tick){consumed.add(a.id);consumed.add(b.id);const tier=a.tier+1,r=PIECES[tier].radius,ma=mass(a),mb=mass(b),id=world.nextId++;const x=clamp((a.x+b.x)/2,BOWL.left+r,BOWL.right-r),y=Math.min((a.y+b.y)/2,BOWL.floor-r);const merged:Ball={id,tier,x,y,px:x,py:y,vx:clamp((a.vx*ma+b.vx*mb)/(ma+mb)*.5,-100,100),vy:clamp((a.vy*ma+b.vy*mb)/(ma+mb)*.5,-120,120),born:world.tick};pending.push(merged);world.merges++;world.effects.push({parents:[a.id,b.id],id,tier,x,y,tick:world.tick});break;}
  const nx=distance>.00001?dx/distance:1,ny=distance>.00001?dy/distance:0,ia=1/mass(a),ib=1/mass(b),sum=ia+ib,overlap=radius-distance;
  if(overlap>0){const correction=Math.max(0,overlap-.015)*.8/sum;a.x-=nx*correction*ia;a.y-=ny*correction*ia;b.x+=nx*correction*ib;b.y+=ny*correction*ib;}
  const relative=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
