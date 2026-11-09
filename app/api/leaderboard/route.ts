@@ -5,9 +5,10 @@ import {env} from 'cloudflare:workers';
 import {isAllowedOrigin} from '../../../lib/cors';
 import {getDb} from '../../../db';
 import {runs,scores} from '../../../db/schema';
-import {eq,gte,and,desc,sql,isNull} from 'drizzle-orm';
-import {replay} from '../../../lib/game';
-import {replayBlocks as replayLegacyBlocks} from '../../../lib/blocks-legacy';
+import {eq,gte,and,sql,isNull} from 'drizzle-orm';
+import {replay,ended} from '../../../lib/game';
+import {replayBlocks as replayLegacyBlocks,hasBlockMoves as hasLegacyBlockMoves} from '../../../lib/blocks-legacy';
+import {hasBlockMoves} from '../../../lib/blocks';
 import {initialBlockCheckpoint,verifyBlockBatch,type BlockCheckpoint} from '../../../lib/block-sync';
 import {savePlayer,ProfileError} from '../../../lib/player-server';
 export async function GET(request:Request){try{const params=new URL(request.url).searchParams,game=params.get('game')||'2048';if(!['2048','blocks','tunnel','maple'].includes(game))return Response.json({error:'Unknown game.'},{status:400});const cutoff=params.get('period')==='week'?Date.now()-7*86400000:0;
@@ -18,30 +19,30 @@ export async function POST(request:Request){
  try {const raw=await request.text();if(raw.length>20000)return Response.json({error:'Run is too long to submit.'},{status:400});const payload=JSON.parse(raw),{id,moves}=payload;let name=payload.name;
  if(typeof id!=='string'||id.length>64||typeof name!=='string'||!name.trim()||name.trim().length>18||/[<>\x00-\x1f]/.test(name)||typeof moves!=='string'||moves.length>16000)return Response.json({error:'Enter a player name and play a few moves first.'},{status:400});
  const db=getDb();const [run]=await db.select().from(runs).where(and(eq(runs.id,id),gte(runs.created,Date.now()-30*86400000)));if(!run)return Response.json({error:'This run has expired. Start a new game to submit a score.'},{status:400});
- let score:number,tile=0,lines=0,count:number,checkpoint:BlockCheckpoint|null=null,flightCheckpoint:FlightCheckpoint|null=null,mapleCheckpoint:MapleCheckpoint|null=null;
+ let finished=false;let score:number,tile=0,lines=0,count:number,checkpoint:BlockCheckpoint|null=null,flightCheckpoint:FlightCheckpoint|null=null,mapleCheckpoint:MapleCheckpoint|null=null;
  const progressConflict=(value:string|null)=>{const current=value?JSON.parse(value) as BlockCheckpoint:initialBlockCheckpoint(run.seed);return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});};
  try{if(run.game==='maple'){
   if(run.rules!==2)throw Error('Unsupported Maple rules');
   const current=run.blockCheckpoint?JSON.parse(run.blockCheckpoint) as MapleCheckpoint:initialMapleCheckpoint(run.seed);
   if(payload.mapleOffset!==current.offset||payload.mapleHash!==current.hash)return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});
   mapleCheckpoint=verifyMapleBatch(current,payload.mapleOffset,payload.mapleHash,moves,payload.mapleEnd,Date.now()-run.created);
-  score=mapleCheckpoint.game.score;tile=mapleCheckpoint.game.highest;lines=mapleCheckpoint.game.world.merges;count=mapleCheckpoint.game.world.drops;
+  finished=mapleCheckpoint.game.over;score=mapleCheckpoint.game.score;tile=mapleCheckpoint.game.highest;lines=mapleCheckpoint.game.world.merges;count=mapleCheckpoint.game.world.drops;
  }else if(run.game==='tunnel'){
   if(run.rules!==FLIGHT_RULES)throw Error('Unsupported flight');
   const current=run.blockCheckpoint?JSON.parse(run.blockCheckpoint) as FlightCheckpoint:initialFlightCheckpoint(run.seed);
   if(payload.flightOffset!==current.offset||payload.flightHash!==current.hash)return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});
   flightCheckpoint=verifyFlightBatch(current,payload.flightOffset,payload.flightHash,moves,Date.now()-run.created);
-  score=flightCheckpoint.game.score;lines=flightCheckpoint.game.crystals;count=flightCheckpoint.game.ticks;
+  finished=flightCheckpoint.game.hp<=0;score=flightCheckpoint.game.score;lines=flightCheckpoint.game.crystals;count=flightCheckpoint.game.ticks;
  }else if(run.game==='blocks'&&run.rules===2){
   const current=run.blockCheckpoint?JSON.parse(run.blockCheckpoint) as BlockCheckpoint:initialBlockCheckpoint(run.seed);
   if(payload.blockOffset!==current.offset||payload.blockHash!==current.hash)return progressConflict(run.blockCheckpoint);
   checkpoint=verifyBlockBatch(current,payload.blockOffset,payload.blockHash,moves);
-  score=checkpoint.game.score;lines=checkpoint.game.lines;count=checkpoint.offset/4;
- }else if(run.game==='blocks'){const g=replayLegacyBlocks(run.seed,moves);score=g.score;lines=g.lines;count=moves.length/4;}
- else{const g=replay(run.seed,moves);score=g.score;tile=Math.max(...g.board);count=moves.length;}}
+  finished=!hasBlockMoves(checkpoint.game);score=checkpoint.game.score;lines=checkpoint.game.lines;count=checkpoint.offset/4;
+ }else if(run.game==='blocks'){const g=replayLegacyBlocks(run.seed,moves);finished=!hasLegacyBlockMoves(g);score=g.score;lines=g.lines;count=moves.length/4;}
+ else{const g=replay(run.seed,moves);finished=ended(g);score=g.score;tile=Math.max(...g.board);count=moves.length;}}
  catch{return Response.json({error:'This run could not be verified.'},{status:400});}if(score<=0&&!mapleCheckpoint)return Response.json({error:'Earn some points before submitting.'},{status:400});
 
- const profile=payload.profile?await savePlayer({...payload.profile,name},false):null;if(profile)name=profile.name;
+ const profile=payload.profile?await savePlayer({...payload.profile,name:typeof payload.profile.name==='string'&&payload.profile.name.trim()?payload.profile.name:name},false):null;
  const playerId=profile?.id||null,now=Date.now();
  const [previousRun]=await db.select().from(scores).where(eq(scores.id,id));
  if(previousRun?.playerId&&previousRun.playerId!==playerId)return Response.json({error:'This run belongs to another profile.'},{status:403});
@@ -51,15 +52,17 @@ export async function POST(request:Request){
   const updated=await db.update(runs).set({blockCheckpoint:JSON.stringify(progress),...((flightCheckpoint||mapleCheckpoint)?{}:{created:now})}).where(and(eq(runs.id,id),run.blockCheckpoint===null?isNull(runs.blockCheckpoint):eq(runs.blockCheckpoint,run.blockCheckpoint))).returning({id:runs.id});
   if(!updated.length){const [current]=await db.select().from(runs).where(eq(runs.id,id));return (flightCheckpoint||mapleCheckpoint)?Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).offset:0,verifiedHash:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).hash:2166136261},{status:409}):progressConflict(current.blockCheckpoint);}
  }
- const verified=progress?{verifiedOffset:progress.offset,verifiedHash:progress.hash}:{};
- if(score<=0)return Response.json({...verified,ok:true,published:false,rank:null,score:0});
- const identityFilter=playerId?eq(scores.playerId,playerId):and(sql`${scores.playerId} IS NULL`,sql`lower(${scores.name})=${name.trim().toLowerCase()}`);
- const [best]=await db.select().from(scores).where(and(eq(scores.game,run.game),identityFilter)).orderBy(desc(scores.score),scores.moves,scores.created).limit(1);
+ const verified={...(progress?{verifiedOffset:progress.offset,verifiedHash:progress.hash}:{}),finished};
+ // Only replay-verified game over can publish. A client final flag is never trusted.
+ if(!finished||score<=0)return Response.json({...verified,ok:true,published:false,rank:null,score});
  const before=await env.DB!.prepare(LEADERBOARD_SQL).bind(run.game,0).all<RankedScore>();
- const findRank=(rows:RankedScore[])=>{const index=rows.findIndex(r=>playerId?r.playerId===playerId:!r.playerId&&r.name.toLowerCase()===name.trim().toLowerCase());return index<0?null:index+1;};
- if(best&&(best.score>score||(best.score===score&&best.moves<=count)))return Response.json({...verified,ok:true,published:best.id===id,rank:findRank(before.results),score:best.score});
- const candidate:RankedScore={id,playerId,name:name.trim(),score,moves:count,created:now};
- if(candidateRank(before.results,candidate)>LEADERBOARD_LIMIT)return Response.json({...verified,ok:true,published:false,rank:null,score});
+ const findRank=(rows:RankedScore[])=>{const index=rows.findIndex(r=>r.id===id);return index<0?null:index+1;};
+ if(previousRun&&(previousRun.score>score||(previousRun.score===score&&previousRun.moves<=count))){const rank=findRank(before.results);return Response.json({...verified,ok:true,published:rank!==null,rank,score:previousRun.score});}
+ const candidate:RankedScore={id,playerId,name:previousRun?.name||name.trim(),score,moves:count,created:now};
+ const proposedRank=candidateRank(before.results,candidate);
+ if(proposedRank>LEADERBOARD_LIMIT)return Response.json({...verified,ok:true,qualified:false,published:false,rank:null,score});
+ // A qualifying final score is only an offer until the player confirms the name.
+ if(payload.confirmPublish!==true)return Response.json({...verified,ok:true,qualified:true,published:false,rank:proposedRank,score});
  await db.insert(scores).values({id,name:name.trim(),score,tile,lines,moves:count,created:now,game:run.game,playerId,icon:profile?.icon||'orbit'}).onConflictDoUpdate({target:scores.id,set:{score,tile,lines,moves:count,created:now,playerId,icon:profile?.icon||'orbit'},setWhere:sql`${scores.score}<${score} OR (${scores.score}=${score} AND ${scores.moves}>${count}) OR (${scores.playerId} IS NULL AND ${playerId} IS NOT NULL)`});
  const after=await env.DB!.prepare(LEADERBOARD_SQL).bind(run.game,0).all<RankedScore>();
  const rank=findRank(after.results);return Response.json({...verified,ok:true,published:rank!==null,rank,score});
