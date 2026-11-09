@@ -1,5 +1,6 @@
 export const LEADERBOARD_LIMIT=10;
-export const LEADERBOARD_SQL = `WITH ranked AS (SELECT s.id,s.player_id AS playerId,s.name AS name,COALESCE(p.icon,s.icon) AS icon,s.game,s.score,s.tile,s.lines,s.moves,s.created,ROW_NUMBER() OVER (PARTITION BY COALESCE(s.player_id,'legacy:'||lower(s.name)) ORDER BY s.score DESC,s.moves ASC,s.created ASC,s.id ASC) AS position FROM scores s LEFT JOIN players p ON p.id=s.player_id WHERE s.game=? AND s.created>=?) SELECT id,playerId,name,icon,game,score,tile,lines,moves,created FROM ranked WHERE position=1 ORDER BY score DESC,moves ASC,created ASC,id ASC LIMIT ${LEADERBOARD_LIMIT}`;
+export const LEADERBOARD_SQL = `SELECT s.id,s.player_id AS playerId,s.name,COALESCE(p.icon,s.icon) AS icon,s.game,s.score,s.tile,s.lines,s.moves,s.created FROM scores s LEFT JOIN players p ON p.id=s.player_id WHERE s.game=? AND s.created>=? ORDER BY s.score DESC,s.moves ASC,s.created ASC,s.id ASC LIMIT ${LEADERBOARD_LIMIT}`;
 
 export type RankedScore={id:string;playerId:string|null;name:string;score:number;moves:number;created:number};
-export function candidateRank(rows:RankedScore[],candidate:RankedScore){const identity=(r:RankedScore)=>r.playerId||'legacy:'+r.name.toLowerCase();const others=rows.filter(r=>identity(r)!==identity(candidate));return 1+others.filter(r=>r.score>candidate.score||(r.score===candidate.score&&(r.moves<candidate.moves||(r.moves===candidate.moves&&r.created<=candidate.created)))).length;}
+export function compareScores(a:RankedScore,b:RankedScore){return b.score-a.score||a.moves-b.moves||a.created-b.created||(a.id<b.id?-1:a.id>b.id?1:0);}
+export function candidateRank(rows:RankedScore[],candidate:RankedScore){return 1+rows.filter(r=>r.id!==candidate.id&&compareScores(r,candidate)<0).length;}
