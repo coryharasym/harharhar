@@ -57,14 +57,26 @@ export async function POST(request:Request){
  if(!finished||score<=0)return Response.json({...verified,ok:true,published:false,rank:null,score});
  const before=await env.DB!.prepare(LEADERBOARD_SQL).bind(run.game,0).all<RankedScore>();
  const findRank=(rows:RankedScore[])=>{const index=rows.findIndex(r=>r.id===id);return index<0?null:index+1;};
- if(previousRun&&(previousRun.score>score||(previousRun.score===score&&previousRun.moves<=count))){const rank=findRank(before.results);return Response.json({...verified,ok:true,published:rank!==null,rank,score:previousRun.score});}
- const candidate:RankedScore={id,playerId,name:previousRun?.name||name.trim(),score,moves:count,created:now};
+ if(previousRun){const rank=findRank(before.results);return Response.json({...verified,ok:true,published:true,rank,score:previousRun.score,name:previousRun.name,nameEditable:!!playerId&&previousRun.nameEdited===0});}
+ const candidate:RankedScore={id,playerId,name:name.trim(),score,moves:count,created:now};
  const proposedRank=candidateRank(before.results,candidate);
  if(proposedRank>LEADERBOARD_LIMIT)return Response.json({...verified,ok:true,qualified:false,published:false,rank:null,score});
- // A qualifying final score is only an offer until the player confirms the name.
- if(payload.confirmPublish!==true)return Response.json({...verified,ok:true,qualified:true,published:false,rank:proposedRank,score});
- await db.insert(scores).values({id,name:name.trim(),score,tile,lines,moves:count,created:now,game:run.game,playerId,icon:profile?.icon||'orbit'}).onConflictDoUpdate({target:scores.id,set:{score,tile,lines,moves:count,created:now,playerId,icon:profile?.icon||'orbit'},setWhere:sql`${scores.score}<${score} OR (${scores.score}=${score} AND ${scores.moves}>${count}) OR (${scores.playerId} IS NULL AND ${playerId} IS NOT NULL)`});
+ await db.insert(scores).values({id,name:name.trim(),nameEdited:0,score,tile,lines,moves:count,created:now,game:run.game,playerId,icon:profile?.icon||'orbit'}).onConflictDoUpdate({target:scores.id,set:{score,tile,lines,moves:count,created:now,playerId,icon:profile?.icon||'orbit'},setWhere:sql`${scores.score}<${score} OR (${scores.score}=${score} AND ${scores.moves}>${count}) OR (${scores.playerId} IS NULL AND ${playerId} IS NOT NULL)`});
  const after=await env.DB!.prepare(LEADERBOARD_SQL).bind(run.game,0).all<RankedScore>();
- const rank=findRank(after.results);return Response.json({...verified,ok:true,published:rank!==null,rank,score});
+ const rank=findRank(after.results);const [saved]=await db.select().from(scores).where(eq(scores.id,id));return Response.json({...verified,ok:true,published:true,rank,score,name:saved.name,nameEditable:!!playerId&&saved.nameEdited===0});
  }catch(e){return Response.json({error:e instanceof ProfileError?e.message:'Your score was not submitted. Your game is saved; please try again.'},{status:e instanceof ProfileError?e.status:503});}
+}
+
+// A finished score stands immediately. Its authenticated owner may correct its name once.
+export async function PATCH(request:Request){
+ if(!isAllowedOrigin(request))return Response.json({error:'Request origin is invalid.'},{status:403});
+ try{const raw=await request.text();if(raw.length>2000)return Response.json({error:'Invalid name edit.'},{status:400});const payload=JSON.parse(raw),{id,name}=payload;
+  if(typeof id!=='string'||id.length>64||typeof name!=='string'||!name.trim()||name.trim().length>18||/[<>\x00-\x1f]/.test(name))return Response.json({error:'Enter a player name with 1–18 characters.'},{status:400});
+  const profile=await savePlayer(payload.profile,false),db=getDb();const [entry]=await db.select().from(scores).where(eq(scores.id,id));
+  if(!entry||entry.playerId!==profile.id)return Response.json({error:'This score belongs to another profile.'},{status:403});
+  if(entry.name===name.trim())return Response.json({ok:true,name:entry.name,nameEditable:entry.nameEdited===0});
+  const changed=await db.update(scores).set({name:name.trim(),nameEdited:1}).where(and(eq(scores.id,id),eq(scores.playerId,profile.id),eq(scores.nameEdited,0))).returning({id:scores.id});
+  if(!changed.length)return Response.json({error:'The name for this score has already been changed.'},{status:409});
+  return Response.json({ok:true,name:name.trim(),nameEditable:false});
+ }catch(e){return Response.json({error:e instanceof ProfileError?e.message:'Your published score is unchanged. Please try the name edit again.'},{status:e instanceof ProfileError?e.status:503});}
 }

@@ -46,3 +46,17 @@ print(json.dumps({game:[dict(r) for r in c.execute(q,(game,0))] for game in ['20
 });
 
 test('same-time ties use run ID consistently with SQL and same-name anonymous runs stay separate',async()=>{const {candidateRank}=await import('../lib/leaderboard.ts');const a={id:'a',playerId:null,name:'Same',score:100,moves:10,created:100},z={...a,id:'z'};assert.equal(candidateRank([z],a),1);assert.equal(candidateRank([a],z),2);assert.equal(candidateRank([a,z],{...a,score:110}),1);});
+
+
+test('one-time name correction migration preserves old names and atomically consumes only new entries',()=>{const script=`import sqlite3,glob,json
+c=sqlite3.connect(':memory:')
+files=sorted(glob.glob('drizzle/*.sql'))
+for f in files[:-1]: c.executescript(open(f).read())
+c.execute("INSERT INTO scores (id,name,score,tile,moves,created,game) VALUES ('old','Old',100,0,10,123,'2048')")
+c.executescript(open(files[-1]).read())
+old=c.execute("SELECT name_edited FROM scores WHERE id='old'").fetchone()[0]
+c.execute("INSERT INTO scores (id,name,name_edited,score,tile,moves,created,game) VALUES ('new','Cory',0,200,0,20,456,'2048')")
+first=c.execute("UPDATE scores SET name='Alex',name_edited=1 WHERE id='new' AND name_edited=0").rowcount
+second=c.execute("UPDATE scores SET name='Sam',name_edited=1 WHERE id='new' AND name_edited=0").rowcount
+print(json.dumps({'old':old,'first':first,'second':second,'row':c.execute("SELECT name,score,moves,created FROM scores WHERE id='new'").fetchone()}))`;
+ const r=JSON.parse(execFileSync('python3',['-c',script],{encoding:'utf8'}));assert.equal(r.old,1);assert.equal(r.first,1);assert.equal(r.second,0);assert.deepEqual(r.row,['Alex',200,20,456]);});
