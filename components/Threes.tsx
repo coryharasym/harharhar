@@ -8,6 +8,8 @@ import {apiUrl} from '../lib/api';
 import type {PlayerProfile} from '../lib/profile';
 import {useAutoLeaderboard} from '../hooks/use-auto-leaderboard';
 import {AutoScoreStatus} from './AutoScoreStatus';
+import {GameActions} from './GameActions';
+import {useGameNavigation} from '../hooks/use-game-navigation';
 import {FinalScoreConfirmation} from './FinalScoreConfirmation';
 import {ThreesAudio,THREES_SOUND_KEY} from '../lib/threes-audio';
 import {GameDialog} from './GameDialog';
@@ -76,7 +78,8 @@ export default function Threes({onBack,onScores,onEditProfile,profile,paused=fal
     setFeedback({ghosts:[],merged:[],incoming:-1,direction:'L',gain:0});current.current=next;setRun(next);setStale(false);setNotice('');persist(next,true);setConfirm(false);setBusy(false);
   }
   function loadLatest(){try{const raw=localStorage.getItem(THREES_SAVE_KEY),saved=raw?decodeThreesSave(raw):null;if(!saved){setNotice('The latest saved board is unavailable. Start a new game to continue.');return;}if(timer.current)clearTimeout(timer.current);locked.current=false;gesture.current=null;setInvalid(false);setFeedback({ghosts:[],merged:[],incoming:-1,direction:'L',gain:0});current.current=saved.run;revision.current=saved.revision;setRun(saved.run);bestRef.current=Math.max(bestRef.current,readThreesBest(localStorage),score(saved.run.game.board));setBest(bestRef.current);setStale(false);setNotice('');}catch{setNotice('The saved board could not be opened.');}}
-  if(!game||!run)return <div className="threes-shell">Opening your saved game…</div>;
+  useGameNavigation(destination=>{void leave(destination);},!paused);
+  if(!game||!run)return <div className="threes-shell">Opening your saved game…<GameActions disabled onLeaderboard={onScores} onNewGame={()=>{}}/></div>;
   const highest=Math.max(...game.board.map(t=>t?.value||0));
   return <section className="threes-shell min-h-screen" aria-label="Threes game">
     <div className="threes-top"><button disabled={busy} onClick={()=>void leave(onBack)}><ArrowLeft size={17}/>Back to games</button><span>HARHARHAR / THREES</span></div>
@@ -98,7 +101,7 @@ export default function Threes({onBack,onScores,onEditProfile,profile,paused=fal
         </div>
         <p className="threes-caption" role="status">{over?'No moves left. A fresh board awaits.':invalid?'That way is blocked. Try another direction.':'Swipe gently. Every move is just one square.'}</p>
         <div className="threes-controls flex justify-center gap-3" aria-label="Move tiles">{arrows.map(([d,Icon,label])=><button key={d} aria-label={'Move '+label} onClick={()=>play(d)} disabled={over||confirm||paused||stale||busy||auto.confirmationOpen}><Icon size={21}/></button>)}</div>
-        <div className="threes-session-actions"><button onClick={()=>void leave(onScores)} disabled={busy}>Top 10 leaderboard <ArrowRight size={15}/></button><button onClick={onEditProfile} disabled={busy}>Player: {profile?.name||'Player'}</button></div>
+        <GameActions onLeaderboard={()=>void leave(onScores)} onNewGame={()=>game.moves&&!over?setConfirm(true):void reset()} disabled={busy}/><div className="threes-session-actions threes-profile-shortcut"><button onClick={onEditProfile} disabled={busy}>Player: {profile?.name||'Player'}</button></div>
         <AutoScoreStatus finished={over} state={auto.state} rank={auto.rank} needsName={auto.needsName} online={!!run.id} onProfile={onEditProfile} onConfirm={auto.openConfirmation} onRetry={auto.retry}/>
         <p className="threes-save-note">{run.id?'Progress saves on this phone · Final scores publish automatically':'Offline practice · Progress and high score save on this phone'}</p>
         {notice&&<p className="threes-warning" role="alert">{notice}</p>}
