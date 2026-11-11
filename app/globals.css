@@ -172,7 +172,6 @@ main.tunnel-review,main.tunnel-review *{-webkit-user-select:none;user-select:non
  .threes-main>.game-actions-dock{grid-column:auto;grid-row:auto}
  .view-threes .threes-shell{min-height:calc(100svh - var(--mobile-controls-total));padding-bottom:30px}
  .view-maple .maple-page{min-height:calc(100svh - var(--mobile-controls-total))}
- .maple-arena{width:min(100%,calc((100svh - var(--mobile-controls-total) - 32px)*.654545));margin-inline:auto}
  .view-tunnel main.tunnel-review{height:auto;min-height:0;display:block;overflow:visible}
  .view-tunnel .tunnel-viewport{height:calc(100dvh - var(--mobile-controls-total) - 76px);width:100%;max-width:calc((100dvh - var(--mobile-controls-total) - 76px)*.65);margin-inline:auto}
  .view-tunnel .game-actions-dock{padding:0 16px}
@@ -219,8 +218,21 @@ main.tunnel-review,main.tunnel-review *{-webkit-user-select:none;user-select:non
  .maple-title-row .game-actions{gap:6px}.maple-title-row .icon-button{width:36px;height:40px}
  .maple-score-cards{gap:10px;margin-bottom:10px}.maple-score-cards>div{padding:10px 12px;min-height:66px}.maple-score-cards strong{font-size:27px}.maple-score-cards>div>span{font-size:8px;letter-spacing:1.2px}
  .maple-chain-summary{display:none}
- .maple-phase-two .maple-arena{width:min(100%,max(170px,calc((100svh - var(--mobile-controls-total) - 352px)*.654545)));margin-inline:auto}
+ .maple-phase-two .maple-arena{width:100%;margin-inline:auto}
  .maple-control-hint{margin-top:6px}
 }
 @media(max-width:350px){.maple-phase-two .maple-title-row h1{font-size:29px}.maple-title-row .game-actions{gap:4px}.maple-title-row .icon-button{width:32px}.maple-score-cards strong{font-size:24px}}
 @media(max-width:900px){.maple-pause{overflow-y:auto;justify-content:flex-start;padding:20px 12px;gap:10px}.maple-pause>span{flex-shrink:0}.maple-pause h2{font-size:23px;margin:0}.maple-pause p{font-size:11px;margin:0}.maple-pause>.primary{flex-shrink:0;margin-top:6px;padding:10px;min-height:44px}.maple-pause>.text-btn{flex-shrink:0;margin:0;min-height:40px}.maple-pause>span{width:40px;height:40px}}
+
+/* Phone play uses the full width; browser height must never shrink the bowl. */
+@media(max-width:760px) and (orientation:portrait){
+ .maple-page .maple-header{display:none}
+ .maple-page main.maple-main{padding:calc(6px + env(safe-area-inset-top,0px)) max(8px,env(safe-area-inset-right,0px)) 20px max(8px,env(safe-area-inset-left,0px));max-width:600px}
+ .maple-phase-two .maple-intro{margin-bottom:6px}
+ .maple-phase-two .maple-title-row h1{font-size:28px}
+ .maple-score-cards{margin-bottom:6px;gap:8px}
+ .maple-score-cards>div{min-height:52px;padding:6px 10px}
+ .maple-score-cards strong{font-size:24px;line-height:1.1}
+ .maple-phase-two .maple-play-top{padding-bottom:4px}
+ .maple-phase-two .maple-arena{border-radius:12px}
+}
