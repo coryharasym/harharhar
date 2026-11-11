@@ -1,6 +1,6 @@
 'use client';
 import {useCallback, useEffect, useRef, useState, type CSSProperties} from 'react';
-import {ArrowLeft, ArrowRight, ArrowUp, ArrowDown, RotateCcw} from 'lucide-react';
+import {ArrowLeft, ArrowRight, ArrowUp, ArrowDown, RotateCcw, Volume2, VolumeX} from 'lucide-react';
 import {ended,score,type Direction,type Motion} from '../lib/threes';
 import {newThreesRun,playThrees,type ThreesRun} from '../lib/threes-session';
 import {THREES_SAVE_KEY,THREES_BEST_KEY,decodeThreesSave,encodeThreesSave,readThreesBest} from '../lib/threes-save';
@@ -9,6 +9,7 @@ import type {PlayerProfile} from '../lib/profile';
 import {useAutoLeaderboard} from '../hooks/use-auto-leaderboard';
 import {AutoScoreStatus} from './AutoScoreStatus';
 import {FinalScoreConfirmation} from './FinalScoreConfirmation';
+import {ThreesAudio,THREES_SOUND_KEY} from '../lib/threes-audio';
 import {GameDialog} from './GameDialog';
 import {ThreesTileFace,threesTone as tone} from './ThreesTileFace';
 const arrows = [['L', ArrowLeft, 'left'], ['U', ArrowUp, 'up'], ['D', ArrowDown, 'down'], ['R', ArrowRight, 'right']] as const;
@@ -19,11 +20,15 @@ async function createRun():Promise<ThreesRun>{
 export default function Threes({onBack,onScores,onEditProfile,profile,paused=false}: {onBack:()=>void;onScores:()=>void;onEditProfile:()=>void;profile:PlayerProfile|null;paused?:boolean}) {
   const [run,setRun]=useState<ThreesRun|null>(null),[best,setBest]=useState(0),[busy,setBusy]=useState(true),[notice,setNotice]=useState(''),[stale,setStale]=useState(false);
   const [feedback,setFeedback]=useState<{ghosts:Motion[];merged:number[];incoming:number;direction:Direction;gain:number}>({ghosts:[],merged:[],incoming:-1,direction:'L',gain:0});
+  const [sound,setSound]=useState(true);const audio=useRef<ThreesAudio|null>(null);
   const [invalid,setInvalid]=useState(false),[confirm,setConfirm]=useState(false);
   const current=useRef<ThreesRun|null>(null),locked=useRef(false),timer=useRef<ReturnType<typeof setTimeout>|null>(null),revision=useRef<string|null>(null);
   const gesture=useRef<{id:number;x:number;y:number}|null>(null),board=useRef<HTMLDivElement>(null),bestRef=useRef(0),mounted=useRef(true);
   const game=run?.game,over=!!game&&ended(game.board),total=game?score(game.board):0;
   const auto=useAutoLeaderboard({game:'threes',id:run?.id||null,score:total,moves:run?.history||'',profile,finished:over,enabled:!!run&&!paused&&!stale});
+  useEffect(()=>{const player=new ThreesAudio();audio.current=player;let enabled=true;try{enabled=localStorage.getItem(THREES_SOUND_KEY)!=='false';}catch{}setSound(enabled);player.setEnabled(enabled);const hidden=()=>{if(document.hidden)player.silence();};document.addEventListener('visibilitychange',hidden);return()=>{document.removeEventListener('visibilitychange',hidden);player.dispose();audio.current=null;};},[]);
+  useEffect(()=>{if(paused||stale||confirm||auto.confirmationOpen)audio.current?.silence();},[paused,stale,confirm,auto.confirmationOpen]);
+  function toggleSound(){const enabled=!sound;setSound(enabled);audio.current?.setEnabled(enabled);try{localStorage.setItem(THREES_SOUND_KEY,String(enabled));}catch{}if(enabled&&!paused&&!stale&&!confirm&&!document.hidden)audio.current?.play('swipe');}
   const persist=useCallback((next:ThreesRun,replace=false)=>{
     try{
       const existing=localStorage.getItem(THREES_SAVE_KEY);
@@ -49,12 +54,12 @@ export default function Threes({onBack,onScores,onEditProfile,profile,paused=fal
   useEffect(()=>{gesture.current=null;},[paused,stale,confirm]);
   const play=useCallback((direction:Direction)=>{
     const before=current.current;
-    if(!before||locked.current||busy||confirm||paused||stale||auto.confirmationOpen||ended(before.game.board))return;
+    if(document.hidden||!before||locked.current||busy||confirm||paused||stale||auto.confirmationOpen||ended(before.game.board))return;
     // Check the saved revision before accepting a move from a possibly stale tab.
     try{const raw=localStorage.getItem(THREES_SAVE_KEY);if((raw===null&&revision.current!==null)||(raw&&decodeThreesSave(raw)?.revision!==revision.current)){setStale(true);return;}}catch{}
     const result=playThrees(before,direction);locked.current=true;
-    if(result.run===before)setInvalid(true);
-    else if(persist(result.run)){current.current=result.run;setRun(result.run);setFeedback({ghosts:result.motions.filter(m=>m.consumed),merged:result.merged,incoming:before.game.serial,direction,gain:score(result.run.game.board)-score(before.game.board)});}
+    if(result.run===before){setInvalid(true);audio.current?.play('blocked');}
+    else if(persist(result.run)){audio.current?.play(result.merged.length?'merge':'swipe',Math.max(3,...result.run.game.board.filter(t=>t&&result.merged.includes(t.id)).map(t=>t!.value)),result.merged.length);current.current=result.run;setRun(result.run);setFeedback({ghosts:result.motions.filter(m=>m.consumed),merged:result.merged,incoming:before.game.serial,direction,gain:score(result.run.game.board)-score(before.game.board)});}
     timer.current=setTimeout(()=>{locked.current=false;setInvalid(false);setFeedback(f=>({...f,ghosts:[],merged:[],incoming:-1,gain:0}));},190);
   },[busy,confirm,paused,stale,auto.confirmationOpen,persist]);
   useEffect(()=>{
@@ -77,7 +82,7 @@ export default function Threes({onBack,onScores,onEditProfile,profile,paused=fal
     <div className="threes-top"><button disabled={busy} onClick={()=>void leave(onBack)}><ArrowLeft size={17}/>Back to games</button><span>HARHARHAR / THREES</span></div>
     <div className="threes-layout">
       <div className="threes-main">
-        <header className="threes-heading"><div><p className="threes-kicker">A LITTLE ADDITION. A LOT OF POSSIBILITY.</p><h1><span>T</span><span>H</span>REES<span className="threes-dot">.</span></h1><p>Good things come in threes.</p></div><button className="threes-reset" aria-label="New game" disabled={busy} onClick={()=>game.moves&&!over?setConfirm(true):void reset()}><RotateCcw size={20}/></button></header>
+        <header className="threes-heading"><div><p className="threes-kicker">A LITTLE ADDITION. A LOT OF POSSIBILITY.</p><h1><span>T</span><span>H</span>REES<span className="threes-dot">.</span></h1><p>Good things come in threes.</p></div><div className="threes-header-actions"><button className="threes-reset" aria-label={sound?'Mute Threes sounds':'Enable Threes sounds'} aria-pressed={sound} onClick={toggleSound}>{sound?<Volume2 size={19}/>:<VolumeX size={19}/>}</button><button className="threes-reset" aria-label="New game" disabled={busy} onClick={()=>game.moves&&!over?setConfirm(true):void reset()}><RotateCcw size={20}/></button></div></header>
         <div className="threes-stats grid grid-cols-3 gap-3"><div><span>SCORE</span><strong aria-live="polite" aria-atomic="true">{total.toLocaleString()}</strong>{feedback.gain > 0 && <small key={game.moves}>+{Math.round(feedback.gain)}</small>}</div><div><span>HIGH SCORE</span><strong>{best.toLocaleString()}</strong></div><div><span>BIGGEST TILE</span><strong>{highest.toLocaleString()}</strong></div></div>
         <div className="threes-preview"><div><span className="threes-kicker">UP NEXT</span><p>A little look ahead.</p></div><div className={'threes-next threes-'+tone(game.next)} aria-label={'Next tile: '+game.next}>{game.next}<i/></div></div>
         <div className="threes-board-wrap"><div className={'threes-board'+(invalid?' threes-invalid':'')} ref={board} tabIndex={0} role="group" aria-label="Threes board. Swipe or use arrow keys. Each swipe moves tiles one square."

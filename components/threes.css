@@ -26,3 +26,8 @@
 .threes-feature .feature-copy h2.threes-card-title{font-family:var(--heading),sans-serif;font-size:70px;font-weight:900;letter-spacing:-3px;line-height:1.2;white-space:nowrap;color:#f4f3ff}.threes-card-title>span:first-child{color:#59e4d5}.threes-card-title>span:nth-child(2),.threes-card-title>.threes-dot{color:#a58aff}
 @media(max-width:600px){.threes-feature .feature-copy h2.threes-card-title{font-size:clamp(40px,14vw,58px)}}
 @media(max-width:360px){.threes-feature .feature-copy h2.threes-card-title{font-size:44px}}
+
+.threes-header-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:8px}
+@media(max-width:600px){.threes-header-actions{gap:6px}.threes-header-actions .threes-reset{width:38px;height:38px}.threes-heading h1{font-size:44px}}
+@media(max-width:350px){.threes-heading h1{font-size:36px}.threes-header-actions{gap:5px}.threes-header-actions .threes-reset{width:36px;height:36px}.threes-heading .threes-kicker{max-width:180px}}
+@media(orientation:landscape) and (max-height:520px) and (min-width:560px){.threes-header-actions{flex-direction:column;gap:5px}.threes-header-actions .threes-reset{width:34px;height:34px}.threes-heading h1{font-size:34px}}
