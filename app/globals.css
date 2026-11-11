@@ -154,3 +154,73 @@ main.tunnel-review,main.tunnel-review *{-webkit-user-select:none;user-select:non
 .keeper-method-badge{display:inline-flex;align-items:center;min-height:38px;padding:8px 14px;border:1px solid #a58aff40;border-radius:10px;background:#a58aff12;color:var(--purple);font-size:12px;font-weight:600}.keeper-form .keeper-radio span{display:block;min-width:0;padding:5px 0}.keeper-form .keeper-radio small{display:block;margin-top:4px;font-size:11px;line-height:1.5;font-weight:400}.keeper-form .keeper-radio:has([name=keeper-scoring-method]){padding:5px 0;align-items:flex-start}.keeper-form input[name=keeper-scoring-method]{margin-top:9px}
 
 .final-score-confirmation{display:flex;flex-direction:column;gap:18px;margin-top:22px}.final-score-summary{display:flex;align-items:center;gap:15px;padding:17px;border:1px solid #a58aff40;background:#a58aff10;border-radius:14px;color:var(--purple)}.final-score-summary span{display:flex;flex-direction:column;gap:5px;font-size:12px}.final-score-summary b{font:600 26px var(--heading);color:var(--aqua)}.final-score-summary small{font-size:11px;color:var(--muted)}.final-score-confirmation label{display:flex;flex-direction:column;gap:9px;font-size:13px;font-weight:600}.final-score-confirmation input{width:100%;min-height:48px;border:1px solid var(--border);border-radius:10px;background:#0d1228;color:var(--text);padding:12px;font-size:16px}.final-score-confirmation>small{font-size:11px;line-height:1.5;color:var(--muted)}.final-score-confirmation>.primary,.final-score-confirmation>.text-btn{min-height:48px}.final-score-error{color:#ffb4c6!important;font-size:13px}
+/* Shared game actions and persistent mobile navigation, across all five games. */
+.game-actions-dock{width:100%}.game-actions-dock>.below-board-actions{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin:18px 0 12px}.game-actions-dock .below-board-actions>button{min-height:46px;justify-content:center;white-space:nowrap}.game-actions-mobile-only{display:none}
+@media(max-width:900px){
+ :root{--mobile-nav-height:68px;--mobile-controls-total:calc(var(--mobile-nav-height) + env(safe-area-inset-bottom,0px))}
+ .app-shell .mobile-nav{display:flex;position:fixed;inset:auto 0 0;height:calc(var(--mobile-nav-height) + env(safe-area-inset-bottom,0px));padding:7px max(12px,env(safe-area-inset-right,0px)) calc(7px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));z-index:61;align-items:center;justify-content:space-around;background:#0d1229fa;border-top:1px solid #353459;backdrop-filter:blur(20px);box-shadow:0 -5px 20px #07091c55}
+ .mobile-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:86px;min-height:50px;border-radius:11px;background:none;font-size:10px;font-weight:500;color:#8793b4}
+ .mobile-nav button.active{background:#42266d80;border:1px solid #7d5cad88;color:#d9c8ff}
+ .app-shell{padding-bottom:calc(var(--mobile-nav-height) + env(safe-area-inset-bottom,0px))!important}
+ .app-shell.has-game-controls{padding-bottom:var(--mobile-controls-total)!important}
+ .has-game-controls .game-actions-dock{display:block;position:static;width:100%;height:auto;padding:0;background:transparent;border:0;backdrop-filter:none}
+ .game-actions-dock>.below-board-actions{max-width:520px;grid-template-columns:1.2fr 1fr;gap:10px;margin:18px auto 12px;height:auto}
+ .game-actions-dock .below-board-actions>button{min-height:44px;min-width:0;padding:10px 12px;font-family:var(--body);font-size:12px;line-height:1.2;gap:8px;border-radius:10px}
+ .game-actions-dock .below-board-actions>button>svg{width:17px;height:17px;flex-shrink:0}
+ .has-game-controls footer{padding-bottom:24px}
+ .threes-profile-shortcut,.threes-header-actions>button[aria-label="New game"],.maple-play-actions>button[aria-label="Start a new bowl"]{display:none}
+ .threes-main>.game-actions-dock{grid-column:auto;grid-row:auto}
+ .view-threes .threes-shell{min-height:calc(100svh - var(--mobile-controls-total));padding-bottom:30px}
+ .view-maple .maple-page{min-height:calc(100svh - var(--mobile-controls-total))}
+ .maple-arena{width:min(100%,calc((100svh - var(--mobile-controls-total) - 32px)*.654545));margin-inline:auto}
+ .view-tunnel main.tunnel-review{height:auto;min-height:0;display:block;overflow:visible}
+ .view-tunnel .tunnel-viewport{height:calc(100dvh - var(--mobile-controls-total) - 76px);width:100%;max-width:calc((100dvh - var(--mobile-controls-total) - 76px)*.65);margin-inline:auto}
+ .view-tunnel .game-actions-dock{padding:0 16px}
+ .view-tunnel .tunnel-bottom{bottom:8px}
+ .view-tunnel .tunnel-settings .tunnel-glass{max-height:calc(100dvh - var(--mobile-controls-total) - 32px)}
+ .view-tunnel .tunnel-settings{z-index:70}
+ .leaderboard-toast{bottom:calc(var(--mobile-controls-total) + 12px);z-index:65}
+ .modal-backdrop{z-index:100}
+ .mobile-nav button:focus-visible,.game-actions-dock button:focus-visible{outline:3px solid var(--aqua);outline-offset:2px}
+}
+@media(max-width:350px){.game-actions-dock .below-board-actions>button{font-size:11px;gap:6px;padding:9px}.game-actions-dock>.below-board-actions{gap:8px}}
+@media(orientation:landscape) and (max-height:520px) and (max-width:900px){
+ :root{--mobile-nav-height:50px}
+ .app-shell .mobile-nav{padding-top:3px;padding-bottom:calc(3px + env(safe-area-inset-bottom,0px))}
+ .mobile-nav button{min-height:42px;flex-direction:row;gap:7px;font-size:11px}
+ .game-actions-dock .below-board-actions>button{min-height:40px;padding:8px 12px}
+ .view-tunnel .tunnel-header{top:5px;height:98px}
+ .view-tunnel .tunnel-header h1{font-size:23px;margin-top:3px}
+ .view-tunnel .tunnel-brand{font-size:7px}
+ .view-tunnel .tunnel-header .tunnel-hud{top:49px;height:40px}
+ .view-tunnel .tunnel-hud strong{font-size:23px}
+ .view-tunnel .tunnel-compass{display:none}
+ .view-tunnel .tunnel-instruments{display:none}
+ .view-tunnel .tunnel-control-row{margin-top:0}
+ .view-tunnel .tunnel-help{margin-top:2px}
+ .view-tunnel .tunnel-overlay:not(.tunnel-countdown):not(.tunnel-settings){inset:90px 10px 60px}
+ .view-tunnel .tunnel-glass{max-height:calc(100dvh - var(--mobile-controls-total) - 30px);overflow-y:auto;padding:16px}
+ .view-tunnel .tunnel-settings{inset:8px}
+}
+.game-actions-dock .below-board-actions>button.primary{background:linear-gradient(115deg,#a46aff,#7b3fe4);border:1px solid #b78bff;color:#fff;box-shadow:inset 0 1px 0 #ffffff33,0 5px 20px #8750ed26}.game-actions-dock .below-board-actions>button.secondary{background:#1b1932;border:1px solid #76608e;color:#ddd3f2;box-shadow:none}
+
+/* Match Maple Merge to the arcade title and score cards; reserve room for the bowl. */
+.maple-title-row{margin:0}.maple-title-row h1{flex:1}.maple-title-row .game-actions{display:flex;gap:8px}.maple-title-row .icon-button{width:40px;height:40px}.maple-chain-summary{display:flex;justify-content:space-between;gap:10px;margin:-6px 0 12px}.maple-score-cards{margin-bottom:14px}
+@media(max-width:900px){
+ .maple-page .maple-header{position:static;display:flex;height:40px;padding:0 16px;background:transparent;box-shadow:none}
+ .maple-header .maple-brand,.maple-header>.icon-button{display:none}
+ .maple-header .maple-back-link{margin:0;min-height:40px;padding:0;font-size:11px}
+ .maple-page main.maple-main{padding:8px 16px 20px;max-width:520px}
+ .maple-phase-two .maple-intro{margin-bottom:12px}
+ .maple-intro .eyebrow,.maple-intro>p,.maple-look-link{display:none}
+ .maple-phase-two .maple-title-row h1{font-size:34px;letter-spacing:-1.8px;margin:0;line-height:1.1;font-weight:600;color:var(--text)}
+ .maple-title-row h1>span{color:var(--aqua)}
+ .maple-title-row{gap:10px;min-height:44px}
+ .maple-title-row .game-actions{gap:6px}.maple-title-row .icon-button{width:36px;height:40px}
+ .maple-score-cards{gap:10px;margin-bottom:10px}.maple-score-cards>div{padding:10px 12px;min-height:66px}.maple-score-cards strong{font-size:27px}.maple-score-cards>div>span{font-size:8px;letter-spacing:1.2px}
+ .maple-chain-summary{display:none}
+ .maple-phase-two .maple-arena{width:min(100%,max(170px,calc((100svh - var(--mobile-controls-total) - 352px)*.654545)));margin-inline:auto}
+ .maple-control-hint{margin-top:6px}
+}
+@media(max-width:350px){.maple-phase-two .maple-title-row h1{font-size:29px}.maple-title-row .game-actions{gap:4px}.maple-title-row .icon-button{width:32px}.maple-score-cards strong{font-size:24px}}
+@media(max-width:900px){.maple-pause{overflow-y:auto;justify-content:flex-start;padding:20px 12px;gap:10px}.maple-pause>span{flex-shrink:0}.maple-pause h2{font-size:23px;margin:0}.maple-pause p{font-size:11px;margin:0}.maple-pause>.primary{flex-shrink:0;margin-top:6px;padding:10px;min-height:44px}.maple-pause>.text-btn{flex-shrink:0;margin:0;min-height:40px}.maple-pause>span{width:40px;height:40px}}
