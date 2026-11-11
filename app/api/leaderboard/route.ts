@@ -1,3 +1,5 @@
+import {initialThreesCheckpoint,verifyThreesBatch,type ThreesCheckpoint} from '../../../lib/threes-session';
+import {ended as threesEnded,score as threesScore} from '../../../lib/threes';
 import {initialMapleCheckpoint,verifyMapleBatch,type MapleCheckpoint} from '../../../lib/maple-sync';
 import {initialFlightCheckpoint,verifyFlightBatch,type FlightCheckpoint,FLIGHT_RULES} from '../../../lib/flight-sync';
 import {LEADERBOARD_SQL,LEADERBOARD_LIMIT,candidateRank,type RankedScore} from '../../../lib/leaderboard';
@@ -11,7 +13,7 @@ import {replayBlocks as replayLegacyBlocks,hasBlockMoves as hasLegacyBlockMoves}
 import {hasBlockMoves} from '../../../lib/blocks';
 import {initialBlockCheckpoint,verifyBlockBatch,type BlockCheckpoint} from '../../../lib/block-sync';
 import {savePlayer,ProfileError} from '../../../lib/player-server';
-export async function GET(request:Request){try{const params=new URL(request.url).searchParams,game=params.get('game')||'2048';if(!['2048','blocks','tunnel','maple'].includes(game))return Response.json({error:'Unknown game.'},{status:400});const cutoff=params.get('period')==='week'?Date.now()-7*86400000:0;
+export async function GET(request:Request){try{const params=new URL(request.url).searchParams,game=params.get('game')||'2048';if(!['2048','blocks','tunnel','maple','threes'].includes(game))return Response.json({error:'Unknown game.'},{status:400});const cutoff=params.get('period')==='week'?Date.now()-7*86400000:0;
  const rows=await env.DB!.prepare(LEADERBOARD_SQL).bind(game,cutoff).all();return Response.json({scores:rows.results},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'The leaderboard is temporarily unavailable. Please try again.'},{status:503});}}
 export async function POST(request:Request){
@@ -19,9 +21,15 @@ export async function POST(request:Request){
  try {const raw=await request.text();if(raw.length>20000)return Response.json({error:'Run is too long to submit.'},{status:400});const payload=JSON.parse(raw),{id,moves}=payload;let name=payload.name;
  if(typeof id!=='string'||id.length>64||typeof name!=='string'||!name.trim()||name.trim().length>18||/[<>\x00-\x1f]/.test(name)||typeof moves!=='string'||moves.length>16000)return Response.json({error:'Enter a player name and play a few moves first.'},{status:400});
  const db=getDb();const [run]=await db.select().from(runs).where(and(eq(runs.id,id),gte(runs.created,Date.now()-30*86400000)));if(!run)return Response.json({error:'This run has expired. Start a new game to submit a score.'},{status:400});
- let finished=false;let score:number,tile=0,lines=0,count:number,checkpoint:BlockCheckpoint|null=null,flightCheckpoint:FlightCheckpoint|null=null,mapleCheckpoint:MapleCheckpoint|null=null;
+ let finished=false;let score:number,tile=0,lines=0,count:number,checkpoint:BlockCheckpoint|null=null,flightCheckpoint:FlightCheckpoint|null=null,mapleCheckpoint:MapleCheckpoint|null=null,threesCheckpoint:ThreesCheckpoint|null=null;
  const progressConflict=(value:string|null)=>{const current=value?JSON.parse(value) as BlockCheckpoint:initialBlockCheckpoint(run.seed);return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});};
- try{if(run.game==='maple'){
+ try{if(run.game==='threes'){
+  if(run.rules!==1)throw Error('Unsupported Threes rules');
+  const current=run.blockCheckpoint?JSON.parse(run.blockCheckpoint) as ThreesCheckpoint:initialThreesCheckpoint(run.seed);
+  if(payload.threesOffset!==current.offset||payload.threesHash!==current.hash)return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});
+  threesCheckpoint=verifyThreesBatch(current,payload.threesOffset,payload.threesHash,moves);
+  const g=threesCheckpoint.state.game;finished=threesEnded(g.board);score=threesScore(g.board);tile=Math.max(...g.board.map(t=>t?.value||0));count=g.moves;
+ }else if(run.game==='maple'){
   if(run.rules!==2)throw Error('Unsupported Maple rules');
   const current=run.blockCheckpoint?JSON.parse(run.blockCheckpoint) as MapleCheckpoint:initialMapleCheckpoint(run.seed);
   if(payload.mapleOffset!==current.offset||payload.mapleHash!==current.hash)return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});
@@ -47,10 +55,10 @@ export async function POST(request:Request){
  const [previousRun]=await db.select().from(scores).where(eq(scores.id,id));
  if(previousRun?.playerId&&previousRun.playerId!==playerId)return Response.json({error:'This run belongs to another profile.'},{status:403});
  // Commit verified progress even when this score does not qualify for the top ten.
- const progress=mapleCheckpoint||flightCheckpoint||checkpoint;
+ const progress=threesCheckpoint||mapleCheckpoint||flightCheckpoint||checkpoint;
  if(progress&&progress.offset!== (run.blockCheckpoint?JSON.parse(run.blockCheckpoint).offset:0)){
-  const updated=await db.update(runs).set({blockCheckpoint:JSON.stringify(progress),...((flightCheckpoint||mapleCheckpoint)?{}:{created:now})}).where(and(eq(runs.id,id),run.blockCheckpoint===null?isNull(runs.blockCheckpoint):eq(runs.blockCheckpoint,run.blockCheckpoint))).returning({id:runs.id});
-  if(!updated.length){const [current]=await db.select().from(runs).where(eq(runs.id,id));return (flightCheckpoint||mapleCheckpoint)?Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).offset:0,verifiedHash:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).hash:2166136261},{status:409}):progressConflict(current.blockCheckpoint);}
+  const updated=await db.update(runs).set({blockCheckpoint:JSON.stringify(progress),...((flightCheckpoint||mapleCheckpoint||threesCheckpoint)?{}:{created:now})}).where(and(eq(runs.id,id),run.blockCheckpoint===null?isNull(runs.blockCheckpoint):eq(runs.blockCheckpoint,run.blockCheckpoint))).returning({id:runs.id});
+  if(!updated.length){const [current]=await db.select().from(runs).where(eq(runs.id,id));return (flightCheckpoint||mapleCheckpoint||threesCheckpoint)?Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).offset:0,verifiedHash:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).hash:2166136261},{status:409}):progressConflict(current.blockCheckpoint);}
  }
  const verified={...(progress?{verifiedOffset:progress.offset,verifiedHash:progress.hash}:{}),finished};
  // Only replay-verified game over can publish. A client final flag is never trusted.
