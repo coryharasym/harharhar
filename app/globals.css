@@ -178,7 +178,7 @@ main.tunnel-review,main.tunnel-review *{-webkit-user-select:none;user-select:non
  .view-tunnel .tunnel-bottom{bottom:8px}
  .view-tunnel .tunnel-settings .tunnel-glass{max-height:calc(100dvh - var(--mobile-controls-total) - 32px)}
  .view-tunnel .tunnel-settings{z-index:70}
- .leaderboard-toast{bottom:calc(var(--mobile-controls-total) + 12px);z-index:65}
+ .leaderboard-toast{top:auto;bottom:calc(var(--mobile-controls-total) + 12px);z-index:65}
  .modal-backdrop{z-index:100}
  .mobile-nav button:focus-visible,.game-actions-dock button:focus-visible{outline:3px solid var(--aqua);outline-offset:2px}
 }
