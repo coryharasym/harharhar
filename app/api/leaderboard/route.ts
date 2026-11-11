@@ -1,3 +1,4 @@
+import {initialTimberCheckpoint,verifyTimberBatch,hasTimberMoves,type TimberCheckpoint} from '../../../lib/timber';
 import {replayDots,DOTS_COUNTDOWN,DOTS_DURATION} from '../../../lib/dots';
 import {initialThreesCheckpoint,verifyThreesBatch,type ThreesCheckpoint} from '../../../lib/threes-session';
 import {ended as threesEnded,score as threesScore} from '../../../lib/threes';
@@ -14,7 +15,7 @@ import {replayBlocks as replayLegacyBlocks,hasBlockMoves as hasLegacyBlockMoves}
 import {hasBlockMoves} from '../../../lib/blocks';
 import {initialBlockCheckpoint,verifyBlockBatch,type BlockCheckpoint} from '../../../lib/block-sync';
 import {savePlayer,ProfileError} from '../../../lib/player-server';
-export async function GET(request:Request){try{const params=new URL(request.url).searchParams,game=params.get('game')||'2048';if(!['2048','blocks','tunnel','maple','threes','dots'].includes(game))return Response.json({error:'Unknown game.'},{status:400});const cutoff=params.get('period')==='week'?Date.now()-7*86400000:0;
+export async function GET(request:Request){try{const params=new URL(request.url).searchParams,game=params.get('game')||'2048';if(!['2048','blocks','tunnel','maple','threes','dots','timber'].includes(game))return Response.json({error:'Unknown game.'},{status:400});const cutoff=params.get('period')==='week'?Date.now()-7*86400000:0;
  const rows=await env.DB!.prepare(LEADERBOARD_SQL).bind(game,cutoff).all();return Response.json({scores:rows.results},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'The leaderboard is temporarily unavailable. Please try again.'},{status:503});}}
 export async function POST(request:Request){
@@ -22,9 +23,15 @@ export async function POST(request:Request){
  try {const raw=await request.text();if(raw.length>20000)return Response.json({error:'Run is too long to submit.'},{status:400});const payload=JSON.parse(raw),{id,moves}=payload;let name=payload.name;
  if(typeof id!=='string'||id.length>64||typeof name!=='string'||!name.trim()||name.trim().length>18||/[<>\x00-\x1f]/.test(name)||typeof moves!=='string'||moves.length>16000)return Response.json({error:'Enter a player name and play a few moves first.'},{status:400});
  const db=getDb();const [run]=await db.select().from(runs).where(and(eq(runs.id,id),gte(runs.created,Date.now()-30*86400000)));if(!run)return Response.json({error:'This run has expired. Start a new game to submit a score.'},{status:400});
- let finished=false;let score:number,tile=0,lines=0,count:number,checkpoint:BlockCheckpoint|null=null,flightCheckpoint:FlightCheckpoint|null=null,mapleCheckpoint:MapleCheckpoint|null=null,threesCheckpoint:ThreesCheckpoint|null=null;
+ let finished=false;let score:number,tile=0,lines=0,count:number,checkpoint:BlockCheckpoint|null=null,flightCheckpoint:FlightCheckpoint|null=null,mapleCheckpoint:MapleCheckpoint|null=null,threesCheckpoint:ThreesCheckpoint|null=null,timberCheckpoint:TimberCheckpoint|null=null;
  const progressConflict=(value:string|null)=>{const current=value?JSON.parse(value) as BlockCheckpoint:initialBlockCheckpoint(run.seed,run.rules);return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});};
- try{if(run.game==='dots'){
+ try{if(run.game==='timber'){
+  if(run.rules!==1)throw Error('Unsupported Little Timber rules');
+  const current=run.blockCheckpoint?JSON.parse(run.blockCheckpoint) as TimberCheckpoint:initialTimberCheckpoint(run.seed);
+  if(payload.timberOffset!==current.offset||payload.timberHash!==current.hash)return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});
+  timberCheckpoint=verifyTimberBatch(current,payload.timberOffset,payload.timberHash,moves);
+  const g=timberCheckpoint.game;finished=!hasTimberMoves(g);score=g.score;tile=g.highest;lines=g.merges;count=g.turns;
+ }else if(run.game==='dots'){
   if(run.rules!==1)throw Error('Unsupported Dots rules');
   const g=replayDots(run.seed,moves);
   const elapsed=Date.now()-run.created-DOTS_COUNTDOWN;
@@ -56,17 +63,17 @@ export async function POST(request:Request){
   finished=!hasBlockMoves(checkpoint.game);score=checkpoint.game.score;lines=checkpoint.game.lines;count=checkpoint.offset/4;
  }else if(run.game==='blocks'){const g=replayLegacyBlocks(run.seed,moves);finished=!hasLegacyBlockMoves(g);score=g.score;lines=g.lines;count=moves.length/4;}
  else{const g=replay(run.seed,moves);finished=ended(g);score=g.score;tile=Math.max(...g.board);count=moves.length;}}
- catch{return Response.json({error:'This run could not be verified.'},{status:400});}if(score<=0&&!mapleCheckpoint)return Response.json({error:'Earn some points before submitting.'},{status:400});
+ catch{return Response.json({error:'This run could not be verified.'},{status:400});}if(score<=0&&!mapleCheckpoint&&!timberCheckpoint)return Response.json({error:'Earn some points before submitting.'},{status:400});
 
  const profile=payload.profile?await savePlayer({...payload.profile,name:typeof payload.profile.name==='string'&&payload.profile.name.trim()?payload.profile.name:name},false):null;
  const playerId=profile?.id||null,now=Date.now();
  const [previousRun]=await db.select().from(scores).where(eq(scores.id,id));
  if(previousRun?.playerId&&previousRun.playerId!==playerId)return Response.json({error:'This run belongs to another profile.'},{status:403});
  // Commit verified progress even when this score does not qualify for the top ten.
- const progress=threesCheckpoint||mapleCheckpoint||flightCheckpoint||checkpoint;
+ const progress=timberCheckpoint||threesCheckpoint||mapleCheckpoint||flightCheckpoint||checkpoint;
  if(progress&&progress.offset!== (run.blockCheckpoint?JSON.parse(run.blockCheckpoint).offset:0)){
-  const updated=await db.update(runs).set({blockCheckpoint:JSON.stringify(progress),...((flightCheckpoint||mapleCheckpoint||threesCheckpoint)?{}:{created:now})}).where(and(eq(runs.id,id),run.blockCheckpoint===null?isNull(runs.blockCheckpoint):eq(runs.blockCheckpoint,run.blockCheckpoint))).returning({id:runs.id});
-  if(!updated.length){const [current]=await db.select().from(runs).where(eq(runs.id,id));return (flightCheckpoint||mapleCheckpoint||threesCheckpoint)?Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).offset:0,verifiedHash:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).hash:2166136261},{status:409}):progressConflict(current.blockCheckpoint);}
+  const updated=await db.update(runs).set({blockCheckpoint:JSON.stringify(progress),...((flightCheckpoint||mapleCheckpoint||threesCheckpoint||timberCheckpoint)?{}:{created:now})}).where(and(eq(runs.id,id),run.blockCheckpoint===null?isNull(runs.blockCheckpoint):eq(runs.blockCheckpoint,run.blockCheckpoint))).returning({id:runs.id});
+  if(!updated.length){const [current]=await db.select().from(runs).where(eq(runs.id,id));return (flightCheckpoint||mapleCheckpoint||threesCheckpoint||timberCheckpoint)?Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).offset:0,verifiedHash:current.blockCheckpoint?JSON.parse(current.blockCheckpoint).hash:2166136261},{status:409}):progressConflict(current.blockCheckpoint);}
  }
  const verified={...(progress?{verifiedOffset:progress.offset,verifiedHash:progress.hash}:{}),finished};
  // Only replay-verified game over can publish. A client final flag is never trusted.
