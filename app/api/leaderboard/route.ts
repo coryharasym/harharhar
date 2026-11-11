@@ -23,7 +23,7 @@ export async function POST(request:Request){
  if(typeof id!=='string'||id.length>64||typeof name!=='string'||!name.trim()||name.trim().length>18||/[<>\x00-\x1f]/.test(name)||typeof moves!=='string'||moves.length>16000)return Response.json({error:'Enter a player name and play a few moves first.'},{status:400});
  const db=getDb();const [run]=await db.select().from(runs).where(and(eq(runs.id,id),gte(runs.created,Date.now()-30*86400000)));if(!run)return Response.json({error:'This run has expired. Start a new game to submit a score.'},{status:400});
  let finished=false;let score:number,tile=0,lines=0,count:number,checkpoint:BlockCheckpoint|null=null,flightCheckpoint:FlightCheckpoint|null=null,mapleCheckpoint:MapleCheckpoint|null=null,threesCheckpoint:ThreesCheckpoint|null=null;
- const progressConflict=(value:string|null)=>{const current=value?JSON.parse(value) as BlockCheckpoint:initialBlockCheckpoint(run.seed);return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});};
+ const progressConflict=(value:string|null)=>{const current=value?JSON.parse(value) as BlockCheckpoint:initialBlockCheckpoint(run.seed,run.rules);return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});};
  try{if(run.game==='dots'){
   if(run.rules!==1)throw Error('Unsupported Dots rules');
   const g=replayDots(run.seed,moves);
@@ -49,8 +49,8 @@ export async function POST(request:Request){
   if(payload.flightOffset!==current.offset||payload.flightHash!==current.hash)return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});
   flightCheckpoint=verifyFlightBatch(current,payload.flightOffset,payload.flightHash,moves,Date.now()-run.created);
   finished=flightCheckpoint.game.hp<=0;score=flightCheckpoint.game.score;lines=flightCheckpoint.game.crystals;count=flightCheckpoint.game.ticks;
- }else if(run.game==='blocks'&&run.rules===2){
-  const current=run.blockCheckpoint?JSON.parse(run.blockCheckpoint) as BlockCheckpoint:initialBlockCheckpoint(run.seed);
+ }else if(run.game==='blocks'&&(run.rules===2||run.rules===3)){
+  const current=run.blockCheckpoint?JSON.parse(run.blockCheckpoint) as BlockCheckpoint:initialBlockCheckpoint(run.seed,run.rules);
   if(payload.blockOffset!==current.offset||payload.blockHash!==current.hash)return progressConflict(run.blockCheckpoint);
   checkpoint=verifyBlockBatch(current,payload.blockOffset,payload.blockHash,moves);
   finished=!hasBlockMoves(checkpoint.game);score=checkpoint.game.score;lines=checkpoint.game.lines;count=checkpoint.offset/4;
