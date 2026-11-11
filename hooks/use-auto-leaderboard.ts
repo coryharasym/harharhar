@@ -6,7 +6,7 @@ import {BLOCK_BATCH_CHARS,blockHistoryHash} from '../lib/block-sync';
 import {useScoreOffer} from './use-score-offer';
 import {apiUrl} from '../lib/api';
 import {type PlayerProfile} from '../lib/profile';
-type Input={game:'2048'|'blocks'|'tunnel'|'threes';id:string|null;score:number;moves:string;profile:PlayerProfile|null;enabled:boolean;finished:boolean};
+type Input={game:'2048'|'blocks'|'tunnel'|'threes'|'dots';id:string|null;score:number;moves:string;profile:PlayerProfile|null;enabled:boolean;finished:boolean};
 const syncKey=(s:Input)=>`${s.moves.length}:${s.finished?1:0}`;
 type Result={name?:string;nameEditable?:boolean;qualified?:boolean;finished?:boolean;ok?:boolean;published?:boolean;rank?:number|null;score?:number;error?:string;verifiedOffset?:number;verifiedHash?:number};
 export function useAutoLeaderboard(input:Input){
@@ -18,7 +18,7 @@ export function useAutoLeaderboard(input:Input){
  useEffect(()=>{setState('idle');setRank(null);},[input.id]);
  const publish=useCallback(async()=>{
   while(pending.current){await pending.current;if(!mounted.current)return false;}
-  const s=latest.current;if((s.game==='2048'||s.game==='threes')&&!s.finished)return true;if(!s.id||!s.profile||s.score<=0||ack.current.get(s.id)===syncKey(s))return true;
+  const s=latest.current;if((s.game==='2048'||s.game==='threes'||s.game==='dots')&&!s.finished)return true;if(!s.id||!s.profile||s.score<=0||ack.current.get(s.id)===syncKey(s))return true;
   if(mounted.current)setState('saving');
   const task=(async()=>{try{let result:Result={},batched=s.game==='blocks'||s.game==='tunnel'||s.game==='threes',hashFn=s.game==='threes'?threesHash:s.game==='tunnel'?flightHistoryHash:blockHistoryHash,batchSize=s.game==='threes'?THREES_BATCH_CHARS:s.game==='tunnel'?FLIGHT_BATCH_CHARS:BLOCK_BATCH_CHARS,offset=batched?(verifiedOffsets.current.get(s.id!)||0):0,conflicts=0;
    do{
@@ -44,9 +44,9 @@ export function useAutoLeaderboard(input:Input){
    }
   return true;}catch{if(mounted.current)setState('error');return false;}finally{pending.current=null;if(mounted.current)setRevision(v=>v+1);}})();pending.current=task;return await task;
  },[]);
- useEffect(()=>{if((input.game==='tunnel'||input.game==='2048'||input.game==='threes')&&!input.finished)return;if(!input.enabled||!input.id||!input.profile||input.score<=0||state==='error'||pending.current||ack.current.get(input.id)===syncKey(input))return;const timer=setTimeout(()=>{void publish();},650);return()=>clearTimeout(timer);},[input.game,input.id,input.score,input.moves,input.finished,input.profile?.id,input.profile?.name,input.profile?.icon,input.enabled,revision,state,publish]);
+ useEffect(()=>{if((input.game==='tunnel'||input.game==='2048'||input.game==='threes'||input.game==='dots')&&!input.finished)return;if(!input.enabled||!input.id||!input.profile||input.score<=0||state==='error'||pending.current||ack.current.get(input.id)===syncKey(input))return;const timer=setTimeout(()=>{void publish();},650);return()=>clearTimeout(timer);},[input.game,input.id,input.score,input.moves,input.finished,input.profile?.id,input.profile?.name,input.profile?.icon,input.enabled,revision,state,publish]);
  useEffect(()=>{if(input.game!=='tunnel'||!input.enabled||!input.id||!input.profile||state==='error')return;const timer=setInterval(()=>{void publish();},2000);return()=>clearInterval(timer);},[input.game,input.enabled,input.id,input.profile?.id,input.profile?.name,state==='error',publish]);
- useEffect(()=>{if(input.game!=='tunnel'&&input.game!=='threes')return;const retry=()=>{if(mounted.current){setState('idle');void publish();}};window.addEventListener('online',retry);return()=>window.removeEventListener('online',retry);},[input.game,publish]);
+ useEffect(()=>{if(input.game!=='tunnel'&&input.game!=='threes'&&input.game!=='dots')return;const retry=()=>{if(mounted.current){setState('idle');void publish();}};window.addEventListener('online',retry);return()=>window.removeEventListener('online',retry);},[input.game,publish]);
  const flush=useCallback(()=>publish(),[publish]);
  const confirm=useCallback(async(name:string)=>{const ok=await offers.editName(name,latest.current.profile,latest.current.game);if(ok)setState('saved');return ok;},[offers.editName]);
  const retry=useCallback(()=>{setState('idle');void publish();},[publish]);
