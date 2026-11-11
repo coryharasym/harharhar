@@ -1,7 +1,14 @@
 'use client';
-import {useId} from 'react';
-/** Original felt illustrations: padded silhouettes, embroidered seams, woven highlights. */
-export function TimberArt({piece,className=''}:{piece:number;className?:string}){const id=useId().replace(/:/g,''),fill=`url(#${id}-felt)`;
+import {useId,useState} from 'react';
+/** The atlas is one transparent 4×4 sheet, shared by board, tray and arcade card. */
+const ART_ORDER=[1,2,3,4,5,6,7,8,9,20,11,12,13,21,22];
+export function TimberArt({piece,className=''}:{piece:number;className?:string}){
+ const [failed,setFailed]=useState(false),cell=ART_ORDER.indexOf(piece),clipId='timber-clip-'+useId().replace(/:/g,'');
+ if(failed||cell<0)return <TimberFeltFallback piece={piece} className={className}/>;
+ return <svg className={'timber-art timber-velvet-art '+className} viewBox="0 0 100 100" aria-hidden="true" style={{overflow:'hidden'}}><defs><clipPath id={clipId}><rect width="100" height="100"/></clipPath></defs><g clipPath={`url(#${clipId})`}><image href="./timber-art/velvet-v2.webp" x={-(cell%4)*100} y={-Math.floor(cell/4)*100} width="400" height="400" preserveAspectRatio="none" onError={()=>setFailed(true)}/></g></svg>;
+}
+/** Small code-native fallback remains available if artwork cannot be loaded. */
+function TimberFeltFallback({piece,className=''}:{piece:number;className?:string}){const id=useId().replace(/:/g,''),fill=`url(#${id}-felt)`;
  const colour=piece===1?'#95b974':piece===2?'#739c66':piece===3?'#4e8671':piece===20?'#ba8763':piece===21?'#b8a6db':piece===22?'#e5bd9b':piece>=11?'#78a179':'#ddb68b';
  return <svg className={'timber-art '+className} viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id={id+'-felt'} cx="35%" cy="25%" r="80%"><stop stopColor={colour} offset="0"/><stop stopColor={colour} offset=".55"/><stop stopColor="#263c37" stopOpacity=".7" offset="1"/></radialGradient><pattern id={id+'-weave'} width="4" height="4" patternUnits="userSpaceOnUse"><path d="M0 1h4M1 0v4" stroke="#fff4da" strokeWidth=".5" opacity=".2"/></pattern><filter id={id+'-shadow'} x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="3" stdDeviation="2" floodColor="#1a2926" floodOpacity=".3"/></filter></defs><ellipse cx="50" cy="86" rx="31" ry="6" fill="#223c30" opacity=".15"/>
  <g filter={`url(#${id}-shadow)`} strokeLinecap="round" strokeLinejoin="round">

@@ -9,6 +9,7 @@ await cp('pages-dist/assets','assets',{recursive:true});
 await cp('pages-dist/index.html','index.html');
 await cp('pages-dist/favicon.svg','favicon.svg');
 await rm('maple-art',{recursive:true,force:true});
-for(const file of ['manifest.webmanifest','sw.js','precache.json','icons','neon-dodger-preview.webp','maple-art'])await cp('pages-dist/'+file,file,{recursive:true});
+await rm('timber-art',{recursive:true,force:true});
+for(const file of ['manifest.webmanifest','sw.js','precache.json','icons','neon-dodger-preview.webp','maple-art','timber-art'])await cp('pages-dist/'+file,file,{recursive:true});
 await writeFile('.nojekyll','');
 console.log('GitHub Pages files are ready at the repository root.');
