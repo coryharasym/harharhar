@@ -1,3 +1,4 @@
+import {replayDots,DOTS_COUNTDOWN,DOTS_DURATION} from '../../../lib/dots';
 import {initialThreesCheckpoint,verifyThreesBatch,type ThreesCheckpoint} from '../../../lib/threes-session';
 import {ended as threesEnded,score as threesScore} from '../../../lib/threes';
 import {initialMapleCheckpoint,verifyMapleBatch,type MapleCheckpoint} from '../../../lib/maple-sync';
@@ -13,7 +14,7 @@ import {replayBlocks as replayLegacyBlocks,hasBlockMoves as hasLegacyBlockMoves}
 import {hasBlockMoves} from '../../../lib/blocks';
 import {initialBlockCheckpoint,verifyBlockBatch,type BlockCheckpoint} from '../../../lib/block-sync';
 import {savePlayer,ProfileError} from '../../../lib/player-server';
-export async function GET(request:Request){try{const params=new URL(request.url).searchParams,game=params.get('game')||'2048';if(!['2048','blocks','tunnel','maple','threes'].includes(game))return Response.json({error:'Unknown game.'},{status:400});const cutoff=params.get('period')==='week'?Date.now()-7*86400000:0;
+export async function GET(request:Request){try{const params=new URL(request.url).searchParams,game=params.get('game')||'2048';if(!['2048','blocks','tunnel','maple','threes','dots'].includes(game))return Response.json({error:'Unknown game.'},{status:400});const cutoff=params.get('period')==='week'?Date.now()-7*86400000:0;
  const rows=await env.DB!.prepare(LEADERBOARD_SQL).bind(game,cutoff).all();return Response.json({scores:rows.results},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'The leaderboard is temporarily unavailable. Please try again.'},{status:503});}}
 export async function POST(request:Request){
@@ -23,7 +24,14 @@ export async function POST(request:Request){
  const db=getDb();const [run]=await db.select().from(runs).where(and(eq(runs.id,id),gte(runs.created,Date.now()-30*86400000)));if(!run)return Response.json({error:'This run has expired. Start a new game to submit a score.'},{status:400});
  let finished=false;let score:number,tile=0,lines=0,count:number,checkpoint:BlockCheckpoint|null=null,flightCheckpoint:FlightCheckpoint|null=null,mapleCheckpoint:MapleCheckpoint|null=null,threesCheckpoint:ThreesCheckpoint|null=null;
  const progressConflict=(value:string|null)=>{const current=value?JSON.parse(value) as BlockCheckpoint:initialBlockCheckpoint(run.seed);return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});};
- try{if(run.game==='threes'){
+ try{if(run.game==='dots'){
+  if(run.rules!==1)throw Error('Unsupported Dots rules');
+  const g=replayDots(run.seed,moves);
+  const elapsed=Date.now()-run.created-DOTS_COUNTDOWN;
+  const last=moves.split(';').filter(Boolean).at(-1)?.split(':')[0];
+  if(last&&parseInt(last,36)>elapsed)throw Error('Move is in the future');
+  finished=elapsed>=DOTS_DURATION;score=g.score;lines=g.loops;tile=g.biggest;count=g.moves;
+ }else if(run.game==='threes'){
   if(run.rules!==1)throw Error('Unsupported Threes rules');
   const current=run.blockCheckpoint?JSON.parse(run.blockCheckpoint) as ThreesCheckpoint:initialThreesCheckpoint(run.seed);
   if(payload.threesOffset!==current.offset||payload.threesHash!==current.hash)return Response.json({error:'Progress changed. Sync again.',verifiedOffset:current.offset,verifiedHash:current.hash},{status:409});
