@@ -8,8 +8,8 @@ export function preflight(request:Request):Response|null {
  if(!isAllowedOrigin(request))return new Response(null,{status:403});
  const method=request.headers.get('Access-Control-Request-Method');
  const headers=(request.headers.get('Access-Control-Request-Headers')||'').split(',').map(h=>h.trim().toLowerCase()).filter(Boolean);
- if(!method||!['GET','POST'].includes(method)||headers.some(h=>h!=='content-type'))return new Response(null,{status:403});
- return withCors(request,new Response(null,{status:204,headers:{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'600'}}));
+ if(!method||!['GET','POST','PATCH'].includes(method)||headers.some(h=>h!=='content-type'))return new Response(null,{status:403});
+ return withCors(request,new Response(null,{status:204,headers:{'Access-Control-Allow-Methods':'GET, POST, PATCH, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'600'}}));
 }
 export function withCors(request:Request,response:Response) {
  if(!isAllowedOrigin(request))return response;

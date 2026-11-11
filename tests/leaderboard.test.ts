@@ -36,12 +36,12 @@ c=sqlite3.connect(':memory:')
 c.row_factory=sqlite3.Row
 for path in sorted(glob.glob('drizzle/*.sql')): c.executescript(open(path).read())
 for i in range(12): c.execute('INSERT INTO players VALUES (?,?,?,?,?)',(str(i),'hash','Player '+str(i),'orbit',1))
-for game in ['2048','blocks','tunnel','maple']:
+for game in ['2048','blocks','tunnel','maple','threes']:
  for i in range(12):
   c.execute('INSERT INTO scores (id,name,score,tile,moves,created,game,player_id,icon,lines) VALUES (?,?,?,?,?,?,?,?,?,?)',(game+str(i),'P'+str(i),2000-i*100,0,10,100,game,str(i),'orbit',0))
-for game in ['2048','blocks','tunnel','maple']:
+for game in ['2048','blocks','tunnel','maple','threes']:
  c.execute('INSERT INTO scores (id,name,score,tile,moves,created,game,player_id,icon,lines) VALUES (?,?,?,?,?,?,?,?,?,?)',(game+'again','P0',1999,0,10,100,game,'0','orbit',0))
-print(json.dumps({game:[dict(r) for r in c.execute(q,(game,0))] for game in ['2048','blocks','tunnel','maple']}))`;
+print(json.dumps({game:[dict(r) for r in c.execute(q,(game,0))] for game in ['2048','blocks','tunnel','maple','threes']}))`;
  const results=JSON.parse(execFileSync('python3',['-c',script],{input:JSON.stringify({query:LEADERBOARD_SQL}),encoding:'utf8'}));for(const rows of Object.values(results) as {playerId:string;score:number}[][]){assert.equal(rows.length,10);assert.equal(new Set(rows.map(r=>r.playerId)).size,9);assert.equal(rows[9].score,1200);}
 });
 
