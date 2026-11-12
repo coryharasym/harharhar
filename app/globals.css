@@ -236,3 +236,5 @@ main.tunnel-review,main.tunnel-review *{-webkit-user-select:none;user-select:non
  .maple-phase-two .maple-play-top{padding-bottom:4px}
  .maple-phase-two .maple-arena{border-radius:12px}
 }
+/* Let phone-sized card decks fit their viewport rather than a sidebar's minimum width. */
+@media(max-width:850px){.hub-grid{grid-template-columns:minmax(0,1fr)}}
