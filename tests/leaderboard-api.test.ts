@@ -46,7 +46,7 @@ for(const [label,make] of [['Threes',threesFixture],['2048',puzzleFixture],['Blo
  const active=await h.post({...f.active,finished:true,gameOver:true});assert.equal(active.status,200,JSON.stringify(active.data));assert.equal(active.data.finished,false);assert.equal(active.data.published,false);assert.equal(h.records.size,0);assert.equal(h.stats.rankingReads,0);
  const posted=await h.post(f.final);assert.equal(posted.status,200,JSON.stringify(posted.data));assert.equal(posted.data.finished,true);assert.equal(posted.data.published,true);assert.equal(posted.data.nameEditable,true);assert.equal(posted.data.rank,1);assert.equal(h.records.size,1);assert.equal(h.records.get('first-run').name,'Cory');
  // Leaving the name alone keeps the existing score, and retries create no duplicates.
- const repeat=await h.post(h.confirmedPayload(),'Different');assert.equal(repeat.data.published,true);assert.equal(h.stats.writes,1);assert.equal(h.records.get('first-run').name,'Cory');
+ const repeat=await h.post({...h.confirmedPayload(),profile:{id:'same-player',key:'valid-key',name:'Different',icon:'moon'}},'Different');assert.equal(repeat.data.published,true);assert.equal(h.stats.writes,1);assert.equal(h.records.get('first-run').name,'Cory');assert.equal(h.records.get('first-run').icon,'orbit');
  const unchanged=await h.edit('Cory');assert.equal(unchanged.status,200);assert.equal(unchanged.data.nameEditable,true);
  const invalid=await h.edit(' ');assert.equal(invalid.status,400);assert.equal(h.records.get('first-run').nameEdited,0);
  const stranger=await h.edit('Alex',{id:'other-player',key:'valid-key',name:'Other',icon:'orbit'});assert.equal(stranger.status,403);
@@ -55,7 +55,7 @@ for(const [label,make] of [['Threes',threesFixture],['2048',puzzleFixture],['Blo
  const retry=await h.edit('Alex');assert.equal(retry.status,200);assert.equal(h.records.size,1);
  const twice=await h.edit('Sam');assert.equal(twice.status,409);assert.equal(h.records.get('first-run').name,'Alex');
  const resync=await h.post(h.confirmedPayload());assert.equal(resync.data.name,'Alex');assert.equal(resync.data.nameEditable,false);assert.equal(h.stats.writes,1);
- h.setRun('second-run');const second=await h.post(f.final);assert.equal(second.status,200,JSON.stringify(second.data));assert.equal(second.data.published,true);assert.equal(second.data.rank,2);assert.equal(h.records.size,2);assert.equal(h.records.get('second-run').name,'Cory');assert.equal(h.records.get('second-run').playerId,h.records.get('first-run').playerId);
+ h.setRun('second-run');const second=await h.post({...f.final,profile:{id:'same-player',key:'valid-key',name:'Cory',icon:'moon'}});assert.equal(second.status,200,JSON.stringify(second.data));assert.equal(second.data.published,true);assert.equal(second.data.rank,2);assert.equal(h.records.size,2);assert.equal(h.records.get('second-run').name,'Cory');assert.equal(h.records.get('second-run').icon,'moon');assert.equal(h.records.get('first-run').icon,'orbit');assert.equal(h.records.get('second-run').playerId,h.records.get('first-run').playerId);
  const anotherEdit=await h.edit('Sam');assert.equal(anotherEdit.status,200);assert.equal(h.records.get('second-run').name,'Sam');assert.equal(h.records.get('first-run').name,'Alex');
  });}
 
