@@ -2,7 +2,7 @@
 
 A personal, untimed sliding traffic puzzle in HarHarHar's midnight arcade theme. Open it with `#gridlock` or the game card.
 
-- 200 permanently numbered, selectable levels: 50 Easy, 50 Intermediate, 50 Advanced, 50 Expert.
+- Collection 2: 200 permanently numbered, selectable levels: 50 Easy, 50 Intermediate, 50 Advanced, 50 Expert.
 - Horizontal and vertical vehicles, lengths 2 and 3. Vehicle lettering is hidden during play; accessible labels retain vehicle identities. The red target exits right from row 3.
 - A whole slide is one move, regardless of distance. Target reaching column 5 (zero-based position 4) completes the puzzle; the exit animation does not add a move.
 - Completion check marks, personal minimum move records, and stars for optimal solutions. No shared leaderboard or API/database changes.
@@ -14,13 +14,15 @@ A personal, untimed sliding traffic puzzle in HarHarHar's midnight arcade theme.
 
 `node --experimental-strip-types scripts/generate-gridlock.ts`
 
-The deterministic development generator explores the complete reachable graph of randomly constructed layouts. Multi-source BFS from every solved state computes exact distances for whole slides. Puzzles have distinct layouts, legal solution certificates and target counts spanning 4–7 moves for Easy, 8–12 for Intermediate, and 13–17 for Advanced and 18+ for Expert. Generating happens during development, never on a player's device.
+The deterministic development generator explores the complete reachable graph of randomly constructed layouts. Multi-source BFS from every solved state computes exact distances for whole slides. Puzzles have distinct layouts, legal solution certificates and target counts spanning 4–7 moves for Easy, 8–12 for Intermediate, and 13–17 for Advanced and 18+ for Expert. Before accepting a puzzle, the generator removes cars unused by a solution, recomputes its shortest solution, and tries solving with each remaining car frozen. If any frozen car allows a solution, it removes unused cars from that route and repeats. Every remaining car must move in every solution. Difficulty is assigned after pruning. Generating happens during development, never on a player's device.
+
+Collection 2 replaces the original filler-heavy collection and uses `harharhar.gridlock.v2` for progress. Original records remain untouched under `harharhar.gridlock.v1`, but do not apply to the new puzzles. The UI explains the fresh records to returning players.
 
 **Do not regenerate shipped levels without versioning the collection and progress key.** Level IDs are persistent save identities. Future edits should preserve existing IDs and layouts.
 
 `node --experimental-strip-types --test tests/gridlock.test.ts`
 
-Tests independently solve all 200 starting states with forward BFS and compare their shortest solutions to the stored minima. They also replay every solution, check unique layouts and tier counts, exercise collision rejection, and validate saved move histories.
+Tests independently solve all 200 starting states with forward BFS and compare their shortest solutions to the stored minima. They also replay every solution, check unique layouts and tier counts, exercise collision rejection, validate saved move histories, and independently confirm that freezing any non-target car makes every puzzle unsolvable.
 
 ## Review
 

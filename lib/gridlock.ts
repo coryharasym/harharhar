@@ -17,7 +17,8 @@ export function slide(vehicles:Vehicle[],positions:Board,piece:number,to:number)
 export function solved(positions:Board){return positions[0]===4;}
 export type Session={level:string;history:Board[]};
 export type Progress={version:1;records:Record<string,number>;session:Session|null};
-export const SAVE_KEY='harharhar.gridlock.v1';
+// Collection 2 has different layouts; keep original records and sessions separate.
+export const SAVE_KEY='harharhar.gridlock.v2';
 export function decodeProgress(raw:string,puzzles:Puzzle[]):Progress|null{
  try{const p=JSON.parse(raw);if(p.version!==1||!p.records||typeof p.records!=='object'||Array.isArray(p.records))return null;const records:Record<string,number>={};for(const level of puzzles){const value=p.records[level.id];if(Number.isSafeInteger(value)&&value>=level.minimum)records[level.id]=value;}
  let session:Session|null=null;
