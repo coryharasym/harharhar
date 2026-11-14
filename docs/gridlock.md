@@ -31,3 +31,16 @@ Tests independently solve all 200 starting states with forward BFS and compare t
 ## Review
 
 The initial integration was checked at a 393 × 852 CSS pixel phone viewport and on desktop. Browser checks cover dragging, undo, reload/resume, solving, personal-best updates, level selection, and the fixed Scores navigation opening Gridlock's device records. Human difficulty and variety review remains useful; solve length alone cannot capture perceived difficulty.
+
+
+## Toybox vehicle artwork
+
+The full 13-colour fleet uses generated transparent illustrations matching the selected rounded die-cast toy reference: glossy windows, body seams, mirrors, rubber tyres, warm headlights, rear lamps, ribbed cargo boxes and open pickup beds. Compact cars retain two-cell footprints; trucks retain three-cell footprints.
+
+`components/GridlockArt.tsx` reads the measured frame bounds in `lib/gridlock-art.ts` and shows each sprite in a clipped SVG viewport. Vertical vehicles rotate the artwork 90 degrees within the existing button. Decorative SVGs ignore pointer input and are hidden from accessibility; the original buttons retain labels, focus, drag axes and keyboard controls. Memoization keeps the art stable during dragging.
+
+The two optimized transparent WebP atlases are in `public/card-art/gridlock-toybox-{cars,trucks}-v1.webp`, with published copies under `card-art/`. Using the existing artwork directory automatically includes both files and their contents in the PWA cache revision. Full fleet image payload is approximately 495 KiB, shared across all puzzle levels. `docs/gridlock-toybox-board.webp` is a phone-sized artwork render, not a screenshot of browser interaction.
+
+Art direction: strict overhead view, every source vehicle faces right; Gridlock's coral/teal/lavender/amber and secondary pastel palette; sculpted rounded enamel, blue-black glazing with diagonal reflections, mirrors and tyres within the cell footprint, no letters, logos or racing stripes; detailed compact cars and long box trucks/pickups. Generated on a transparent 4×4 layout, prepared by retaining each vehicle's connected opaque silhouette and antialiased edge, then encoded to WebP. The frame bounds are measured from the final prepared artwork.
+
+Art validation checks all 26 frame bounds and offline availability. Reviewed the complete fleet and a dense Expert board at phone-sized dimensions in rendered SVG output. Live browser preview could not connect to the local server in this environment; interaction logic and layout sizes were retained.
