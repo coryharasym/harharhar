@@ -17,11 +17,11 @@ export function slide(vehicles:Vehicle[],positions:Board,piece:number,to:number)
 export function solved(positions:Board){return positions[0]===4;}
 export type Session={level:string;history:Board[]};
 export type Progress={version:1;records:Record<string,number>;session:Session|null};
-// Collection 2 has different layouts; keep original records and sessions separate.
+// Layout IDs preserve records when the collection is reordered or expanded.
 export const SAVE_KEY='harharhar.gridlock.v2';
 export function decodeProgress(raw:string,puzzles:Puzzle[]):Progress|null{
  try{const p=JSON.parse(raw);if(p.version!==1||!p.records||typeof p.records!=='object'||Array.isArray(p.records))return null;const records:Record<string,number>={};for(const level of puzzles){const value=p.records[level.id];if(Number.isSafeInteger(value)&&value>=level.minimum)records[level.id]=value;}
  let session:Session|null=null;
- if(p.session){const level=puzzles.find(l=>l.id===p.session.level),history=p.session.history;if(!level||!Array.isArray(history)||!history.length||history.length>10001)return null;if(JSON.stringify(history[0])!==JSON.stringify(level.positions))return null;for(let i=0;i<history.length;i++){const board=history[i];if(!Array.isArray(board))return null;occupancy(level.vehicles,board);if(i){const previous=history[i-1];if(solved(previous))return null;const changed=board.map((n,j)=>n!==previous[j]?j:-1).filter(j=>j>=0);if(changed.length!==1)return null;slide(level.vehicles,previous,changed[0],board[changed[0]]);}}session={level:level.id,history};}
+ if(p.session){const level=puzzles.find(l=>l.id===p.session.level),history=p.session.history;if(!level)return {version:1,records,session:null};if(!Array.isArray(history)||!history.length||history.length>10001)return null;if(JSON.stringify(history[0])!==JSON.stringify(level.positions))return null;for(let i=0;i<history.length;i++){const board=history[i];if(!Array.isArray(board))return null;occupancy(level.vehicles,board);if(i){const previous=history[i-1];if(solved(previous))return null;const changed=board.map((n,j)=>n!==previous[j]?j:-1).filter(j=>j>=0);if(changed.length!==1)return null;slide(level.vehicles,previous,changed[0],board[changed[0]]);}}session={level:level.id,history};}
  return {version:1,records,session};}catch{return null;}
 }
