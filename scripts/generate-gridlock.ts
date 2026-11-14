@@ -1,6 +1,7 @@
 // Development-only deterministic generator. BFS edges are whole slides, not single squares.
 import {writeFileSync} from 'node:fs';
 import {solved,type Puzzle,type Vehicle} from '../lib/gridlock.ts';
+import {prunePuzzle} from './gridlock-pruning.ts';
 let seed=62371;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
 const key=(p:number[])=>p.join('');
 function search(vehicles:Vehicle[],start:number[],limit=40000){
@@ -19,14 +20,21 @@ while(counts.some(n=>n<50)){
  const result=search(vehicles,positions);if(!result)continue;
  const targets=[4+Math.min(3,Math.floor(counts[0]/12)),8+Math.min(4,Math.floor(counts[1]/10)),13+Math.min(4,Math.floor(counts[2]/10)),18+Math.min(3,Math.floor(counts[3]/15))];
  const candidates=[[],[],[],[]] as number[][];result.distance.forEach((d,i)=>{if(d===targets[0])candidates[0].push(i);else if(d===targets[1])candidates[1].push(i);else if(d>=targets[2]&&d<=17)candidates[2].push(i);else if(d>=targets[3])candidates[3].push(i);});
- // One puzzle per vehicle layout, prioritizing the hardest set still needed.
+ // Up to three distinct starts per vehicle layout, prioritizing harder tiers.
  const category=[3,2,1,0].find(c=>counts[c]<50&&candidates[c].length);if(category===undefined)continue;
- const options=candidates[category];let at=options[Math.floor(random()*options.length)];const initial=at,solution:Puzzle['solution']=[];
+ const options=[...candidates[category]];
+ if(category===3)options.sort((a,b)=>result.distance[b]-result.distance[a]);
+ for(let variant=0;variant<3&&options.length;variant++){
+ let at=options.splice(category===3?0:Math.floor(random()*options.length),1)[0];const initial=at,solution:Puzzle['solution']=[];
  while(result.toward[at]>=0){const next=result.toward[at],p=result.boards[at],q=result.boards[next],piece=p.findIndex((v,i)=>v!==q[i]);solution.push({piece,to:q[piece]});at=next;}
+ const candidate=prunePuzzle({id:'',difficulty:'Easy',vehicles,positions:result.boards[initial],minimum:solution.length,solution});
+ const tier=candidate.minimum<4?-1:candidate.minimum<=7?0:candidate.minimum<=12?1:candidate.minimum<=17?2:3;
+ if(tier===-1||counts[tier]>=50)continue;
  // Ignore vehicle identifiers and colours when detecting duplicate puzzles.
- const signature=vehicles.map((v,i)=>`${v.horizontal?'H':'V'}${v.length}${v.lane}${result.boards[initial][i]}`).sort().join('|');if(seen.has(signature))continue;seen.add(signature);
- const difficulty=(['Easy','Intermediate','Advanced','Expert'] as const)[category];counts[category]++;puzzles.push({id:`${difficulty.toLowerCase()}-${counts[category]}`,difficulty,vehicles,positions:result.boards[initial],minimum:solution.length,solution});
- if(counts[category]%10===0)console.log({attempts,counts});
+ const signature=candidate.vehicles.map((v,i)=>`${v.horizontal?'H':'V'}${v.length}${v.lane}${candidate.positions[i]}`).sort().join('|');if(seen.has(signature))continue;seen.add(signature);
+ const difficulty=(['Easy','Intermediate','Advanced','Expert'] as const)[tier];counts[tier]++;puzzles.push({...candidate,id:`${difficulty.toLowerCase()}-${counts[tier]}`,difficulty});
+ if(counts[tier]%10===0)console.log({attempts,counts});
+ }
 }
 puzzles.sort((a,b)=>['Easy','Intermediate','Advanced','Expert'].indexOf(a.difficulty)-['Easy','Intermediate','Advanced','Expert'].indexOf(b.difficulty)||a.minimum-b.minimum);
 for(const difficulty of ['Easy','Intermediate','Advanced','Expert'])puzzles.filter(p=>p.difficulty===difficulty).forEach((p,i)=>p.id=`${difficulty.toLowerCase()}-${i+1}`);
