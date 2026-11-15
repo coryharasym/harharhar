@@ -1,0 +1,29 @@
+.game-browser-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
+.game-browser-toolbar>span{color:var(--muted);font-size:11px}
+.game-view-toggle{display:flex;gap:4px;padding:4px;border:1px solid var(--border);border-radius:11px;background:#10162c}
+.game-view-toggle button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:8px 16px;border-radius:7px;color:var(--muted);background:transparent;font-size:12px}
+.game-view-toggle button[aria-pressed=true]{color:#e2d5ff;background:#30264e;box-shadow:inset 0 1px 0 #d4c2ff15}
+.game-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.compact-game{position:relative;min-width:0;isolation:isolate;border:1px solid #7450bf88;border-radius:17px;background:radial-gradient(ellipse at 70% 25%,#7043ba30,transparent 70%),linear-gradient(145deg,#221b43,#142539);box-shadow:inset 0 1px 0 #ccbaff12;transition:border-color .18s,box-shadow .18s}
+.compact-game:hover{border-color:#a58aff;box-shadow:0 6px 24px #080b1f55}
+.compact-game-launch{display:block;width:100%;padding:0;background:transparent;border-radius:16px;color:var(--text);text-align:left;overflow:hidden}
+.compact-game-launch:disabled{opacity:.65}
+.compact-game-art{position:relative;height:180px;overflow:hidden;pointer-events:none}
+.compact-game-caption{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:13px 14px;border-top:1px solid #b7a0e422;background:#0d142a55;min-height:52px}
+.compact-game-caption h3{font-size:14px;line-height:1.3;letter-spacing:-.3px}
+.compact-game-caption>svg{flex-shrink:0;color:var(--aqua)}
+.compact-game .fav-btn{top:8px;right:8px;min-width:44px;min-height:44px;background:#12182de6;color:#b0b6d0}
+.compact-game .fav-btn.is-fav{color:var(--aqua)}
+.compact-game .compact-game-art>*{position:absolute;left:50%;right:auto;top:50%;bottom:auto;transform:translate(-50%,-50%);transform-origin:center;margin:0;animation:none}
+.compact-game-art>.tile-art{width:310px;height:280px;transform:translate(-50%,-50%) scale(.57)}
+.compact-game-art>.block-card-art{width:150px;height:150px;gap:4px;padding:7px;transform:translate(-50%,-50%) rotate(-10deg) scale(.88)}
+.compact-game-art>.neon-card-art{width:145px;height:165px;max-width:none;opacity:1;border:0;box-shadow:none}
+.compact-game-art>.maple-card-art{width:150px;height:150px;min-height:0}
+.compact-game-art>.threes-card-art{width:260px;height:270px;transform:translate(-50%,-50%) scale(.55)}
+.compact-game-art>.dots-card-art{width:150px;height:150px}
+.compact-game-art>.gl-card-art{width:165px;height:165px;mask-image:none;-webkit-mask-image:none;transform:translate(-50%,-50%) rotate(-7deg)}
+.compact-game-art>.skyline-card-art{width:100%;height:100%;mask-image:none;-webkit-mask-image:none;object-fit:cover}
+.compact-game-art>.rs-card-art{width:130px;height:130px;gap:5px;transform:translate(-50%,-50%) rotate(-9deg)}
+@media(min-width:1100px){.game-card-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:380px){.game-card-grid{gap:10px}.compact-game-art{height:160px}.compact-game-caption{padding:12px 10px}.compact-game-caption h3{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.compact-game{transition:none}}
