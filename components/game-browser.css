@@ -1,0 +1,49 @@
+.game-browser-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
+.game-browser-toolbar>span{color:var(--muted);font-size:11px}
+.game-view-toggle{display:flex;gap:4px;padding:4px;border:1px solid var(--border);border-radius:11px;background:#10162c}
+.game-view-toggle button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:8px 16px;border-radius:7px;color:var(--muted);background:transparent;font-size:12px}
+.game-view-toggle button[aria-pressed=true]{color:#e2d5ff;background:#30264e;box-shadow:inset 0 1px 0 #d4c2ff15}
+.game-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+/* Each cover shares one atlas; titles stay accessible, sharp HTML text. */
+.compact-game{position:relative;min-width:0;isolation:isolate;border:1px solid #a281ef9c;border-radius:18px;background:#11162c;box-shadow:inset 0 1px 0 #dcc9ff33,0 6px 18px #03071444;transition:border-color .18s,box-shadow .18s;container-type:inline-size}
+.compact-game:hover{border-color:#c4a4ff;box-shadow:0 0 18px #9c6bf533}
+.compact-game-launch{position:relative;display:block;width:100%;aspect-ratio:3/4;padding:0;background:transparent;border-radius:17px;color:var(--text);text-align:left;overflow:hidden}
+.compact-game-launch:disabled{opacity:.65}
+.cover-art{position:absolute;inset:0;background-image:url('../public/card-art/immersive-covers-v1.webp');background-size:300% 300%;background-position:0 0;pointer-events:none;transition:filter .2s}
+.compact-game:hover .cover-art{filter:brightness(1.08)}
+.compact-game[data-game=blocks] .cover-art{background-position:50% 0}
+.compact-game[data-game=tunnel] .cover-art{background-position:100% 0}
+.compact-game[data-game=maple] .cover-art{background-position:0 50%}
+.compact-game[data-game=threes] .cover-art{background-position:50% 50%}
+.compact-game[data-game=skyline] .cover-art{background-position:100% 50%}
+.compact-game[data-game=dots] .cover-art{background-position:0 100%}
+.compact-game[data-game=gridlock] .cover-art{background-position:50% 100%}
+.compact-game[data-game=river] .cover-art{background-position:100% 100%}
+.cover-shade{position:absolute;inset:0;background:linear-gradient(180deg,#060b1800 30%,#090e251a 45%,#090e25bd 70%,#090e25fa 100%);pointer-events:none}
+.compact-game-caption{position:absolute;inset:auto 0 0;padding:14px 10px 17px;pointer-events:none;text-align:center}
+.cover-title{font-family:var(--heading);font-size:clamp(26px,18cqw,46px);line-height:.95;letter-spacing:-1.8px;font-weight:700;color:#f4f2ff;text-shadow:0 2px 2px #06091d,0 5px 15px #06091d88;margin:0}
+.cover-title span{display:block;color:#59e4d5}
+.compact-game[data-game="2048"] .cover-title{font-size:clamp(34px,25cqw,65px);color:#bc92ff;letter-spacing:-2px}
+.compact-game[data-game="2048"] .cover-title span,.compact-game[data-game=skyline] .cover-title span,.compact-game[data-game=threes] .cover-title span{display:inline}
+.compact-game[data-game=blocks] .cover-title{font-weight:700;letter-spacing:-1.5px}
+.compact-game[data-game=tunnel] .cover-title{text-transform:uppercase;font-style:italic;font-size:clamp(23px,17cqw,42px);letter-spacing:-1.4px;transform:skewX(-6deg)}
+.compact-game[data-game=maple] .cover-title{font-family:var(--body);color:#ffe9d0;letter-spacing:-1.5px;font-weight:700;line-height:1.02}
+.compact-game[data-game=maple] .cover-title span{color:#d5a9ff}
+.compact-game[data-game=threes] .cover-title{font-size:clamp(23px,15.5cqw,40px);letter-spacing:-1.4px}
+.compact-game[data-game=threes] .cover-title b{color:#59e4d5}.compact-game[data-game=threes] .cover-title em{font-style:normal;color:#bc92ff}
+.compact-game[data-game=skyline] .cover-title{font-style:italic;font-size:clamp(29px,20cqw,52px);letter-spacing:-2px}
+.compact-game[data-game=skyline] .cover-title b{color:#59e4d5}.compact-game[data-game=skyline] .cover-title span{color:#bc92ff}
+.compact-game[data-game=dots] .cover-title{letter-spacing:1px;font-size:clamp(30px,21cqw,52px)}
+.compact-game[data-game=dots] .cover-title span{display:inline;color:#59e4d5}.compact-game[data-game=dots] .cover-title b{color:#bc92ff}
+.compact-game[data-game=gridlock] .cover-title{letter-spacing:-1px;font-size:clamp(26px,18cqw,46px)}
+.compact-game[data-game=river] .cover-title{font-style:italic;letter-spacing:-1px}
+.compact-game .fav-btn{top:8px;right:8px;min-width:44px;min-height:44px;background:#10172ce0;color:#d4c7ef;border-color:#b9a0ef66;backdrop-filter:blur(8px)}
+.compact-game .fav-btn.is-fav{color:var(--aqua);border-color:#59e4d577}
+@media(min-width:1100px){.game-card-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:380px){.game-card-grid{gap:10px}.compact-game-caption{padding:12px 7px 15px}}
+@media(prefers-reduced-motion:reduce){.compact-game,.cover-art{transition:none}}
+
+.cover-number{position:absolute;left:49%;top:43%;transform:translate(-50%,-50%) rotate(-12deg);font-family:var(--heading);font-size:clamp(22px,16cqw,42px);font-weight:700;color:#fff;text-shadow:0 2px 3px #56249266;line-height:1;letter-spacing:-1px}
+.compact-game[data-game=threes] .cover-number{left:53%;top:46%;font-size:clamp(30px,23cqw,60px);color:#412865}
+.compact-game[data-game=threes] .small-one{left:22%;top:18%;font-size:clamp(19px,14cqw,35px);transform:translate(-50%,-50%) rotate(-22deg)}
+.compact-game[data-game=threes] .small-two{left:77%;top:16%;font-size:clamp(19px,14cqw,35px);transform:translate(-50%,-50%) rotate(16deg)}
