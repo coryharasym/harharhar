@@ -1,7 +1,7 @@
 /* Built for the current app bundle. APIs and player data never enter this cache. */
 const SCOPE = self.registration.scope;
 const PREFIX = 'hhh-' + new URL(SCOPE).pathname + '-';
-const CACHE = PREFIX + 'b996034e99b4f941';
+const CACHE = PREFIX + '035d6f2783499e6b';
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
