@@ -200,3 +200,11 @@ Weighted shape selection shifts toward larger and awkward pieces, with early/bre
 Rules v2 remain frozen in `lib/blocks-v2.ts`. Old saves without a rules marker restore as v2. New saves record v3, and server run creation/checkpoint verification dispatch by the run's stored rules. The completed-rack count lives in checkpoint state, so stripping verified move history cannot reset progression. Existing leaderboard entries and personal bests remain in place; no database migration or score reset is required.
 
 Validation includes 1,200 solved refills across all stages, larger-piece distribution and breather checks, a clear-before-fit fixture, losing placement choices, deterministic v2 restoration and v3 batched replay, plus final-score publication for v1/v2/v3. Browser QA checks new-game placement, unrestricted rotations, updated rules and reload recovery. Physical iPhone playtesting remains useful for tuning the pacing.
+
+### Skyline
+
+Skyline uses one ranked ruleset: place floors, trim overhang, and restore up to 12% of foundation width after three consecutive perfect drops. Heights exclude the foundation. Top 10 orders by floors descending, then perfect drops descending, then submission time and run ID for exact ties.
+
+The client records microsecond sweep durations. The server replays those inputs using the same landing rules and speed curve, checks elapsed time, and publishes only a verified game over. `scores.score` stores floors, `scores.lines` stores perfect drops, and `scores.moves` stores drop attempts. Existing games retain their ranking rules; no database migration is needed.
+
+Unfinished runs restore paused from input history. Finished ranked runs enter a device-local retry queue, so Play Again can proceed during a connection failure. Retries use the original run ID and verified history offsets. Qualifying scores publish immediately and use the shared one-time, entry-only name correction. Offline practice saves the personal best without publishing.
