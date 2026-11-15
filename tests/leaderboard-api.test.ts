@@ -2,6 +2,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
+import * as skylineSync from '../lib/skyline-sync.ts';
+import {skylinePosition,landing,sweepSeconds} from '../lib/skyline.ts';
 import * as dots from '../lib/dots.ts';
 import * as threes from '../lib/threes.ts';
 import * as threesSync from '../lib/threes-session.ts';
@@ -23,6 +25,12 @@ function blockFixture(legacy=false,version=3):Fixture{const rules=legacy?legacyB
 function flightFixture():Fixture{const seed=3;let g=startFlight(seed),before=g,history='';for(let n=0;n<30000&&g.hp>0;n++){before=g;g=stepFlight(g,0);history+='7f';}assert.equal(g.hp,0);const offset=history.length-2,hash=flightSync.flightHistoryHash(history.slice(0,offset));return {game:'tunnel',rules:flightSync.FLIGHT_RULES,seed,checkpoint:{offset,hash,game:{...before,events:[]}},active:{moves:'',flightOffset:offset,flightHash:hash},final:{moves:'7f',flightOffset:offset,flightHash:hash},history};}
 function mapleFixture():Fixture{const seed=123,g=newMapleGame(seed);let before=structuredClone(g),history='',beforeMoves='';for(let n=0;n<20000&&!g.over;n++){before=structuredClone(g);beforeMoves=history;if(n%40===0){const x=aimX(180,g.current);if(gameDrop(g,x))history+=mapleSync.encodeMapleDrop(g.world.tick,x);}stepMapleGame(g);}assert.ok(g.over);assert.ok(g.score>0);const offset=before.world.tick,hash=mapleSync.mapleHash(beforeMoves);return {game:'maple',rules:2,seed,checkpoint:{offset,hash,game:before},active:{moves:'',mapleOffset:offset,mapleHash:hash,mapleEnd:offset},final:{moves:history.slice(beforeMoves.length),mapleOffset:offset,mapleHash:hash,mapleEnd:g.world.tick},history};}
 
+function skylineFixture():Fixture{
+ let cp=skylineSync.initialSkylineCheckpoint(),history='';
+ for(let i=0;i<6;i++){const x=cp.floor.x+(i===0?40:0),center=x+cp.floor.width/2,floor=cp.floors+1,seconds=(floor%2?center:360-center)/360*sweepSeconds(floor),command=skylineSync.encodeSkylineDrop(seconds);cp=skylineSync.verifySkylineBatch(cp,cp.offset,cp.hash,command,1e9);history+=command;}
+ const last=skylineSync.encodeSkylineDrop((cp.floors+1)%2?0:sweepSeconds(cp.floors+1));
+ return {game:'skyline',rules:1,seed:0,checkpoint:cp,active:{moves:'',skylineOffset:cp.offset,skylineHash:cp.hash},final:{moves:last,skylineOffset:cp.offset,skylineHash:cp.hash},history:history+last};
+}
 const routeCode=ts.transpileModule(readFileSync('app/api/leaderboard/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 function harness(f:Fixture){
  let run:any;const records=new Map<string,any>(),stats={writes:0,rankingReads:0,profileNames:[] as string[]};const runsTable:any={id:'runId',created:'runCreated',blockCheckpoint:'checkpoint'},scoresTable:any={id:'scoreId',score:'score',moves:'moves',playerId:'playerId',name:'name',nameEdited:'nameEdited'};
@@ -33,16 +41,16 @@ function harness(f:Fixture){
  class ProfileError extends Error{status=400;}
  const modules:Record<string,unknown>={
   'cloudflare:workers':{env},'../../../db':{getDb:()=>db},'../../../db/schema':{runs:runsTable,scores:scoresTable},'drizzle-orm':{eq:(field:any,value:any)=>[field,value],gte:()=>null,and:(...conditions:any[])=>conditions.filter(Boolean),sql:()=>null,isNull:()=>null},
-  '../../../lib/cors':{isAllowedOrigin:()=>true},'../../../lib/player-server':{savePlayer:async(p:any)=>{if(p.key!=='valid-key')throw new ProfileError('Invalid profile');stats.profileNames.push(p.name);return p;},ProfileError},'../../../lib/dots':dots,'../../../lib/threes':threes,'../../../lib/threes-session':threesSync,'../../../lib/game':game2048,'../../../lib/blocks':blocks,'../../../lib/blocks-legacy':legacyBlocks,'../../../lib/block-sync':blockSync,'../../../lib/flight-sync':flightSync,'../../../lib/maple-sync':mapleSync,'../../../lib/leaderboard':leaderboard
+  '../../../lib/cors':{isAllowedOrigin:()=>true},'../../../lib/player-server':{savePlayer:async(p:any)=>{if(p.key!=='valid-key')throw new ProfileError('Invalid profile');stats.profileNames.push(p.name);return p;},ProfileError},'../../../lib/skyline-sync':skylineSync,'../../../lib/dots':dots,'../../../lib/threes':threes,'../../../lib/threes-session':threesSync,'../../../lib/game':game2048,'../../../lib/blocks':blocks,'../../../lib/blocks-legacy':legacyBlocks,'../../../lib/block-sync':blockSync,'../../../lib/flight-sync':flightSync,'../../../lib/maple-sync':mapleSync,'../../../lib/leaderboard':leaderboard
  };
  const exports:any={};new Function('require','exports',routeCode)((name:string)=>{if(!(name in modules))throw Error('Unexpected dependency '+name);return modules[name];},exports);
  const post=async(payload:Record<string,unknown>,name='Cory',profileName='Cory')=>{const response=await exports.POST(new Request('https://test.invalid/api/leaderboard',{method:'POST',body:JSON.stringify({id:run.id,name,profile:{id:'same-player',key:'valid-key',name:profileName,icon:'orbit'},...payload})}));return {status:response.status,data:await response.json()};};
- const confirmedPayload=()=>{if(!run.blockCheckpoint)return f.final;const cp=JSON.parse(run.blockCheckpoint);return {moves:'',...(f.game==='threes'?{threesOffset:cp.offset,threesHash:cp.hash}:f.game==='maple'?{mapleOffset:cp.offset,mapleHash:cp.hash,mapleEnd:cp.offset}:f.game==='tunnel'?{flightOffset:cp.offset,flightHash:cp.hash}:{blockOffset:cp.offset,blockHash:cp.hash})};};
+ const confirmedPayload=()=>{if(!run.blockCheckpoint)return f.final;const cp=JSON.parse(run.blockCheckpoint);return {moves:'',...(f.game==='skyline'?{skylineOffset:cp.offset,skylineHash:cp.hash}:f.game==='threes'?{threesOffset:cp.offset,threesHash:cp.hash}:f.game==='maple'?{mapleOffset:cp.offset,mapleHash:cp.hash,mapleEnd:cp.offset}:f.game==='tunnel'?{flightOffset:cp.offset,flightHash:cp.hash}:{blockOffset:cp.offset,blockHash:cp.hash})};};
  const edit=async(name:string,profile:Record<string,unknown>={id:'same-player',key:'valid-key',name:'Cory',icon:'orbit'})=>{const response=await exports.PATCH(new Request('https://test.invalid/api/leaderboard',{method:'PATCH',body:JSON.stringify({id:run.id,name,profile})}));return {status:response.status,data:await response.json()};};
  return {post,edit,records,stats,setRun,confirmedPayload,get run(){return run;}};
 }
 
-for(const [label,make] of [['Threes',threesFixture],['2048',puzzleFixture],['Block Flux',()=>blockFixture()],['v2 Block Flux',()=>blockFixture(false,2)],['legacy Block Flux',()=>blockFixture(true)],['Neon Dodger',flightFixture],['Maple Merge',mapleFixture]] as const){test(`${label}: final scores publish automatically and allow one entry-only name edit`,async()=>{const f=make(),h=harness(f);
+for(const [label,make] of [['Skyline',skylineFixture],['Threes',threesFixture],['2048',puzzleFixture],['Block Flux',()=>blockFixture()],['v2 Block Flux',()=>blockFixture(false,2)],['legacy Block Flux',()=>blockFixture(true)],['Neon Dodger',flightFixture],['Maple Merge',mapleFixture]] as const){test(`${label}: final scores publish automatically and allow one entry-only name edit`,async()=>{const f=make(),h=harness(f);
  const active=await h.post({...f.active,finished:true,gameOver:true});assert.equal(active.status,200,JSON.stringify(active.data));assert.equal(active.data.finished,false);assert.equal(active.data.published,false);assert.equal(h.records.size,0);assert.equal(h.stats.rankingReads,0);
  const posted=await h.post(f.final);assert.equal(posted.status,200,JSON.stringify(posted.data));assert.equal(posted.data.finished,true);assert.equal(posted.data.published,true);assert.equal(posted.data.nameEditable,true);assert.equal(posted.data.rank,1);assert.equal(h.records.size,1);assert.equal(h.records.get('first-run').name,'Cory');
  // Leaving the name alone keeps the existing score, and retries create no duplicates.
@@ -68,3 +76,24 @@ test('a finished run stays unpublished if it does not qualify',async()=>{const f
 function dotsFixture():Fixture{const seed=42,g=dots.startDots(seed);let path:number[]=[];for(let i=0;i<36&&!path.length;i++)for(let j=i+1;j<36;j++)if(dots.adjacent(i,j)&&g.board[i]===g.board[j]){path=[i,j];break;}const history=dots.encodeDotsMove(path,250);return {game:'dots',rules:1,seed,checkpoint:null,active:{moves:history},final:{moves:history},history};}
 test('Dots verifies replayed scores, waits for the server deadline, and publishes one editable entry',async()=>{const f=dotsFixture(),h=harness(f);h.run.created=Date.now()-dots.DOTS_COUNTDOWN-1000;const active=await h.post({...f.active,finished:true,score:999999});assert.equal(active.status,200);assert.equal(active.data.finished,false);assert.equal(h.records.size,0);h.run.created=Date.now()-dots.DOTS_COUNTDOWN-dots.DOTS_DURATION-50;const result=await h.post({...f.final,score:999999});assert.equal(result.status,200,JSON.stringify(result.data));assert.equal(result.data.finished,true);assert.equal(result.data.published,true);assert.equal(result.data.score,2);assert.equal(result.data.nameEditable,true);const repeat=await h.post(f.final);assert.equal(repeat.status,200);assert.equal(h.stats.writes,1);const edit=await h.edit('Alex');assert.equal(edit.status,200);assert.equal(h.records.get('first-run').name,'Alex');assert.equal((await h.edit('Sam')).status,409);});
 test('Dots rejects moves after 60 seconds and moves ahead of the server clock',async()=>{const f=dotsFixture(),h=harness(f);const late=await h.post({moves:'1aao:01;'});assert.equal(late.status,400);h.run.created=Date.now();const future=await h.post(f.final);assert.equal(future.status,400);});
+
+test('Skyline verifies the full run, ignores claimed metrics, and never publishes an active tower',async()=>{
+ const f=skylineFixture(),h=harness({...f,checkpoint:null});const prefix=f.history.slice(0,-12);
+ const active=await h.post({moves:prefix,skylineOffset:0,skylineHash:skylineSync.INITIAL_SKYLINE_HASH,score:999999,perfects:999,finished:true});assert.equal(active.status,200,JSON.stringify(active.data));assert.equal(active.data.finished,false);assert.equal(h.records.size,0);
+ const offset=prefix.length,final=await h.post({moves:f.history.slice(-12),skylineOffset:offset,skylineHash:skylineSync.skylineHash(prefix),score:999999});assert.equal(final.status,200,JSON.stringify(final.data));assert.equal(final.data.score,6);assert.equal(final.data.finished,true);assert.equal(h.records.get('first-run').lines,5);assert.equal(h.stats.writes,1);
+ const retry=await h.post({moves:'',skylineOffset:f.history.length,skylineHash:skylineSync.skylineHash(f.history)});assert.equal(retry.status,200);assert.equal(h.stats.writes,1);
+});
+test('Skyline ties rank perfect drops before submission time, while extra floors win',async()=>{
+ const f=skylineFixture(),h=harness(f);
+ h.records.set('less-perfect',{id:'less-perfect',game:'skyline',score:6,lines:4,moves:7,created:1});
+ h.records.set('more-perfect',{id:'more-perfect',game:'skyline',score:6,lines:6,moves:7,created:1});
+ h.records.set('taller',{id:'taller',game:'skyline',score:7,lines:0,moves:8,created:1});
+ const r=await h.post(f.final);assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.rank,3);
+});
+test('Skyline rejects malformed inputs, future runs, unsupported rules, and drops after game over',async()=>{
+ const f=skylineFixture(),h=harness({...f,checkpoint:null});
+ assert.equal((await h.post({moves:'xyz',skylineOffset:0,skylineHash:skylineSync.INITIAL_SKYLINE_HASH})).status,400);
+ h.run.created=Date.now();assert.equal((await h.post({moves:f.history,skylineOffset:0,skylineHash:skylineSync.INITIAL_SKYLINE_HASH})).status,400);
+ h.run.created=Date.now()-3600000;assert.equal((await h.post({moves:f.history+skylineSync.encodeSkylineDrop(0),skylineOffset:0,skylineHash:skylineSync.INITIAL_SKYLINE_HASH})).status,400);
+ h.run.rules=99;assert.equal((await h.post({moves:f.history,skylineOffset:0,skylineHash:skylineSync.INITIAL_SKYLINE_HASH})).status,400);
+});
