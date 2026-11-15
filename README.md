@@ -11,6 +11,12 @@ A mobile-first puzzle arcade for adults. Midnight Arcade pairs deep navy with vi
 - Continued play after reaching 2048, game-over handling, and confirmation before replacing a run.
 - Swipeable game-card deck with previous/next buttons, direct card selection, keyboard arrows, and an animated Shuffle button. The phone remembers deck order; favourites filter the playable deck. Future-game placeholders have been removed.
 
+## River Shift
+
+An untimed, rotation-only river puzzle with 36 verified layouts across Easy, Medium, Hard and Expert. Easy and Medium use 4×4 boards; Hard and Expert use 5×5 boards. Turn the river tiles to connect the fixed mountain spring to the fixed ocean through every river tile. Trees, rocks and grass are fixed scenery obstacles. All openings share the same width; live turquoise water marks the first broken connection.
+
+Includes the approved midnight ceramic finish, numbered level selector, completion checks, local personal bests, undo, restart/replay, optional sound, reduced-motion support and keyboard controls. The existing Games / Scores / Profile bar stays in place; Scores opens River Shift’s device-local records. No new API endpoints or database migrations are required. See [the game guide](docs/river-shift.md) and [puzzle collection](docs/river-shift-puzzles.md).
+
 ## Development
 
 Requires Node 22.13+ and pnpm (the exact version is in `package.json`).
