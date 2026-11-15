@@ -1,12 +1,28 @@
 'use client';
 import {Children,isValidElement,useEffect,useState,type ReactNode,type ReactElement,type HTMLAttributes,type ButtonHTMLAttributes} from 'react';
-import {Grid2X2,Layers,ArrowUpRight} from 'lucide-react';
+import {Grid2X2,Layers} from 'lucide-react';
 import {GameDeck} from './GameDeck';
 import './game-browser.css';
 
 type NodeProps=HTMLAttributes<HTMLElement>&{'data-game'?:string;'data-title'?:string;children?:ReactNode};
 const elements=(children:ReactNode)=>Children.toArray(children).filter(isValidElement<NodeProps>);
 const hasClass=(node:ReactElement<NodeProps>,name:string)=>node.props.className?.split(' ').includes(name);
+
+
+function coverTitle(id?:string,title?:string):ReactNode{
+ switch(id){
+  case '2048':return <>2048<span>.</span></>;
+  case 'blocks':return <>Block<span>Flux</span></>;
+  case 'tunnel':return <>Neon<span>Dodger</span></>;
+  case 'maple':return <>Maple<span>Merge</span></>;
+  case 'threes':return <><b>T</b><em>H</em>REES<span>.</span></>;
+  case 'skyline':return <><b>Sky</b>line<span>.</span></>;
+  case 'dots':return <>D<span>O</span>TS<b>!</b></>;
+  case 'gridlock':return <>GRID<span>LOCK</span></>;
+  case 'river':return <>River<span>Shift</span></>;
+  default:return title;
+ }
+}
 
 export function GameBrowser({children}:{children:ReactNode}){
  const [view,setView]=useState<'deck'|'grid'>('deck');
@@ -19,10 +35,8 @@ export function GameBrowser({children}:{children:ReactNode}){
    const parts=elements(card.props.children),copy=parts.find(part=>hasClass(part,'feature-copy')||hasClass(part,'block-feature-copy'));
    const play=elements(copy?.props.children).find(part=>hasClass(part,'play-button')) as ReactElement<ButtonHTMLAttributes<HTMLButtonElement>>|undefined;
    const favourite=parts.find(part=>hasClass(part,'fav-btn'));
-   // Keep the artwork and launch behaviour shared with the full deck card.
-   const art=parts.filter(part=>part!==copy&&part!==favourite&&!hasClass(part,'featured-glow')&&!hasClass(part,'feature-footer'));
    return <article key={card.props['data-game']} role="listitem" className="compact-game" data-game={card.props['data-game']}>
-    <button className="compact-game-launch" onClick={play?.props.onClick} disabled={!play||play.props.disabled} aria-label={'Play '+card.props['data-title']}><div className="compact-game-art" aria-hidden="true">{art}</div><div className="compact-game-caption"><h3>{card.props['data-title']}</h3><ArrowUpRight size={16}/></div></button>
+    <button className="compact-game-launch" onClick={play?.props.onClick} disabled={!play||play.props.disabled} aria-label={'Play '+card.props['data-title']}><div className="cover-art" aria-hidden="true">{card.props['data-game']==='2048'&&<span className="cover-number">2048</span>}{card.props['data-game']==='threes'&&<><span className="cover-number">3</span><span className="cover-number small-one">1</span><span className="cover-number small-two">2</span></>}</div><div className="cover-shade" aria-hidden="true"/><div className="compact-game-caption"><h3 className="cover-title" aria-label={card.props['data-title']}>{coverTitle(card.props['data-game'],card.props['data-title'])}</h3></div></button>
     {favourite}
    </article>;
   })}</div>}</div>
